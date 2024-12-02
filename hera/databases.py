@@ -25,31 +25,28 @@ class databases:
                 - "versions" (list): A list of version identifiers.
                 - "products" (list): A list of product identifiers.
                 - "steps" (list): A list of step identifiers.
-                - "variabilities" (list): A list of variability identifiers.
 
         Returns:
             list: A list of configuration objects, each representing a unique combination
-                  of version, product, step, and variability.
+                  of version, product and step.
         """
         configurations = list(product(
             parameters["versions"],
             parameters["products"],
-            parameters["steps"],
-            parameters["variabilities"]
+            parameters["steps"]
         ))
 
         return [
                 configuration(
                     version,
                     product,
-                    step,
-                    variability
+                    step
                 )
-            for (version, product, step, variability) in configurations
+            for (version, product, step) in configurations
         ]
     
     def filter_dbs_configurations_by_ds_configuration(self, dbs_configurations: list[configuration], ds_configuration: configuration) -> list:
-        return [c for c in dbs_configurations if c.product == ds_configuration.product and c.step == ds_configuration.step and c.variability == ds_configuration.variability]
+        return [c for c in dbs_configurations if c.product == ds_configuration.product and c.step == ds_configuration.step]
 
     def create_postgres_container_service(self, configuration: configuration, constants) -> None:
         """
@@ -86,13 +83,59 @@ class databases:
                 "-c", "log_destination=stderr,jsonlog",
                 "-c", "logging_collector=on"
             ],
-            resources=Resources(memory_request="8Gi", cpu_request="2")
+            resources=Resources(memory_request="4Gi", memory_limit="8Gi", cpu_limit="1")
         )
 
         manifest = create_service_manifest(postgres_service_name, str(configuration), postgres_container_name, 5432, 5432)
 
         Resource(
             name=postgres_service_name,
+            action="create",
+            manifest=manifest,
+        )
+
+    def create_postgres_flat_container_service(self, configuration: configuration, constants) -> None:
+        """
+        Creates a PostgreSQL container service within a Kubernetes cluster.
+        This method sets up a PostgreSQL container with the specified configuration and constants.
+        It defines the container's environment variables, image, and other properties, and then
+        creates a corresponding Kubernetes service manifest to expose the container.
+        Args:
+            configuration (configuration): The configuration object containing settings for the PostgreSQL container.
+            constants: An object containing constant values such as image name, username, and password.
+        Returns:
+            None
+        """
+        postgres_flat_container_name = self.layout.create_postgres_flat_container_name(configuration)
+        postgres_flat_service_name = self.layout.create_postgres_flat_service_name(configuration)
+        Container(
+            name=postgres_flat_container_name,
+            image=constants.postgres,
+            image_pull_policy=models.ImagePullPolicy.always,
+            daemon=True,
+            labels={"app": postgres_flat_container_name},
+            env=[
+                Env(
+                    name="POSTGRES_DB",
+                    value=self.layout.create_database_identifier(configuration),
+                ),
+                Env(name="POSTGRES_USER", value=constants.postgres_username),
+                Env(name="POSTGRES_PASSWORD", value=constants.postgres_password),
+                Env(name="PGDATA", value=self.environment.database_data(configuration)),
+            ],
+            args=[
+                "-c", "log_duration=on",
+                "-c", "log_statement=all",
+                "-c", "log_destination=stderr,jsonlog",
+                "-c", "logging_collector=on"
+            ],
+            resources=Resources(memory_request="4Gi", memory_limit="8Gi", cpu_limit="1")
+        )
+
+        manifest = create_service_manifest(postgres_flat_service_name, str(configuration), postgres_flat_container_name, 5432, 5432)
+
+        Resource(
+            name=postgres_flat_service_name,
             action="create",
             manifest=manifest,
         )
@@ -127,9 +170,9 @@ class databases:
                     value="true",
                 ),
                 Env(name="BLAZEGRAPH_TIMEOUT", value="180000"),
-                Env(name="BLAZEGRAPH_MEMORY", value="32G"),
+                Env(name="BLAZEGRAPH_MEMORY", value="8G"),
             ],
-            resources=Resources(memory_request="8Gi", cpu_request="2")
+            resources=Resources(memory_request="4Gi", memory_limit="8Gi", cpu_limit="1")
         )
 
         manifest = create_service_manifest(blazegraph_service_name, str(configuration), blazegraph_container_name, 9999, 8080)
@@ -156,6 +199,7 @@ class databases:
         """
         for configuration in configurations:
             self.create_postgres_container_service(configuration, constants)
+            self.create_postgres_flat_container_service(configuration, constants)
             self.create_blazegraph_container_service(configuration, constants)
 
     def create_dbs_queriers(self, configurations: list[configuration], constants) -> None:
@@ -180,12 +224,13 @@ class databases:
 
         blazegraph_service_name = self.layout.create_blazegraph_service_name(configuration)
         quaque_service_name = layout.create_quaque_service_name(configuration)
+        quaque_flat_service_name = layout.create_quaque_flat_service_name(configuration)
 
         Container(
             name=querier_container_name,
             image=constants.quads_querier,
             image_pull_policy=models.ImagePullPolicy.always,
-            args=[blazegraph_service_name, quaque_service_name]
+            args=[blazegraph_service_name, quaque_service_name, quaque_flat_service_name]
         )
 
     def create_services_remover(self, configurations: list[configuration]) -> None:

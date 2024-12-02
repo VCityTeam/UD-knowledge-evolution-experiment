@@ -1,5 +1,3 @@
-import uuid
-
 class layout:
     @staticmethod
     def rename_resource(base_name: str) -> str:
@@ -19,6 +17,11 @@ class layout:
     def create_relational_database_url(configuration):
         host = layout.create_postgres_service_name(configuration)
         return f'jdbc:postgresql://{host}:5432/{layout.create_database_identifier(configuration)}'
+
+    @staticmethod
+    def create_relational_flat_database_url(configuration):
+        host = layout.create_postgres_flat_service_name(configuration)
+        return f'jdbc:postgresql://{host}:5432/{layout.create_database_identifier(configuration)}'
     
     @staticmethod
     def create_service_remover_name(configuration):
@@ -29,24 +32,48 @@ class layout:
         return f"{layout.create_name('postgres', configuration)}-container"
     
     @staticmethod
+    def create_postgres_flat_container_name(configuration):
+        return f"flat-{layout.create_postgres_container_name(configuration)}"
+    
+    @staticmethod
     def create_postgres_service_name(configuration):
         return f"{layout.create_name('postgres', configuration)}-service"
+    
+    @staticmethod
+    def create_postgres_flat_service_name(configuration):
+        return f"flat-{layout.create_postgres_service_name(configuration)}"
     
     @staticmethod
     def create_quader_container_name(configuration):
         return f"{layout.create_name('quader', configuration)}-container"
     
     @staticmethod
+    def create_quader_flat_container_name(configuration):
+        return f"flat-{layout.create_quader_container_name(configuration)}"
+    
+    @staticmethod
     def create_quader_service_name(configuration):
         return f"{layout.create_name('quader', configuration)}-service"
+    
+    @staticmethod
+    def create_quader_flat_service_name(configuration):
+        return f"flat-{layout.create_quader_service_name(configuration)}"
     
     @staticmethod
     def create_quaque_container_name(configuration):
         return f"{layout.create_name('quaque', configuration)}-container"
     
     @staticmethod
+    def create_quaque_flat_container_name(configuration):
+        return f"flat-{layout.create_quaque_container_name(configuration)}"
+    
+    @staticmethod
     def create_quaque_service_name(configuration):
         return f"{layout.create_name('quaque', configuration)}-service"
+    
+    @staticmethod
+    def create_quaque_flat_service_name(configuration):
+        return f"flat-{layout.create_quaque_service_name(configuration)}"
     
     @staticmethod
     def create_blazegraph_container_name(configuration):

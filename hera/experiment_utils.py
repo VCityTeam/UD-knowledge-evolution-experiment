@@ -3,14 +3,14 @@ from hera.workflows import (
 )
 
 @script()
-def print_environment(parameters: object):
+def print_workflow_parameters(parameters: object):
     import json
 
     print("Printing workflow parameters:")
     print("parameters: ", json.dumps(parameters, sort_keys=True))
 
 @script()
-def print_instance_args(arguments: object):
+def print_database_config(arguments: object):
     import json
 
     print("Printing instance arguments:")

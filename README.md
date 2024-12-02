@@ -20,7 +20,7 @@ export POSTGRES_PASSWORD="<password>"
 python experiment.py --help
 
 # execute the experiment
-python experiment.py --versions 1 10 100 1000 --products 5 20 80 350 --steps 1 5 10 50 --variabilities 0 1 10 100
+python experiment.py --versions 1 10 100 1000 --products 5 20 80 350 --steps 1 5 10 50
 ```
 
 ```mermaid

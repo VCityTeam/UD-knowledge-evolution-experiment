@@ -5,7 +5,8 @@ from hera.workflows import (
     Resource,
     script,
     Parameter,
-    Resources
+    Resources,
+    Env
 )
 from experiment_utils import create_volume_manifest
 from experiment_layout import layout
@@ -29,7 +30,10 @@ from itertools import product
             mount_path="/app/data",
         )
     ],
-    resources=Resources(memory_request="2Gi")
+    resources=Resources(memory_limit="2Gi"),
+    env=[
+        Env(name="PYTHONUNBUFFERED", value="1"),
+    ]
 )
 def create_relational_dataset_importer(
     number_of_versions: int,
@@ -41,9 +45,11 @@ def create_relational_dataset_importer(
     import requests
     import sys
 
-    directory = "/app/data/relational"
+    directory = "/app/data/data/relational"
 
     try:
+        print(f"Directory: {directory}, Number of versions: {number_of_versions}, Hostname: {hostname}")
+
         # Get the list of files and directories in the specified directory
         files_and_directories = os.listdir(directory)
         
@@ -52,7 +58,7 @@ def create_relational_dataset_importer(
 
         # Print the files
         for file in files:
-            if file.endswith(".ttl.relational.trig"):
+            if file.endswith(".ttl.trig"):
                 # Extraire le numéro de version à partir du nom de fichier
                 version = int(file.split('-')[-1].split('.ttl')[0])
 
@@ -94,7 +100,10 @@ def create_relational_dataset_importer(
             mount_path="/app/data",
         )
     ],
-    resources=Resources(memory_request="2Gi")
+    resources=Resources(memory_limit="2Gi"),
+    env=[
+        Env(name="PYTHONUNBUFFERED", value="1"),
+    ]
 )
 def create_theoretical_dataset_importer(
     number_of_versions: int,
@@ -106,9 +115,11 @@ def create_theoretical_dataset_importer(
     import requests
     import sys
 
-    directory = "/app/data/theoretical"
+    directory = "/app/data/data/theoretical"
 
     try:
+        print(f"Directory: {directory}, Number of versions: {number_of_versions}, Hostname: {hostname}")
+
         # Get the list of files and directories in the specified directory
         files_and_directories = os.listdir(directory)
         
@@ -116,7 +127,7 @@ def create_theoretical_dataset_importer(
         files = [f for f in files_and_directories if os.path.isfile(os.path.join(directory, f))]
 
         for file in files:
-            if file.endswith(".ttl.theoretical.trig"):
+            if file.endswith(".ttl.trig"):
                 # Extraire le numéro de version à partir du nom de fichier
                 version = int(file.split('-')[-1].split('.ttl')[0])
 
@@ -229,26 +240,25 @@ class datasets:
                 name=bsbm_container_name,
                 image=constants.bsbm,
                 image_pull_policy=models.ImagePullPolicy.always,
-                args=["generate-n", configuration.version, configuration.product, configuration.step, configuration.variability],
+                args=["generate-n", configuration.version, configuration.product, configuration.step],
                 volumes=[volume_mount],
-                resources=Resources(memory_request="4Gi", cpu_request="2")
+                resources=Resources(memory_request="4Gi", memory_limit="8Gi", cpu_limit="1")
             )
 
     def generate_datasets_configurations(self, arguments: object) -> list[configuration]:
         """
         Generate dataset configurations based on the provided arguments.
         This method takes an object containing various arguments and generates a list of dataset configurations.
-        The configurations are created by taking the Cartesian product of the provided versions, products, steps, 
-        and variabilities. Note that the configurations set of the datasets are a subset of server configurations.
+        The configurations are created by taking the Cartesian product of the provided versions, products and steps.
+        Note that the configurations set of the datasets are a subset of server configurations.
         Args:
             arguments (object): An object containing the following keys:
                 - versions (list): A list of version numbers. (here, only the maximum version is considered)
                 - products (list): A list of product names.
                 - steps (list): A list of steps.
-                - variabilities (list): A list of variabilities.
         Returns:
             list: A list of dataset configurations, where each configuration is represented as a tuple 
-                  (version, product, step, variability).
+                  (version, product, step).
         """
         versions = [max(arguments["versions"])]
 
@@ -256,17 +266,15 @@ class datasets:
             versions,
             arguments["products"],
             arguments["steps"],
-            arguments["variabilities"]
         ))
 
         return [
                 configuration(
                     version,
                     product,
-                    step,
-                    variability
+                    step
                 )
-            for (version, product, step, variability) in configurations
+            for (version, product, step) in configurations
         ]
     
     def create_datasets_transformers_containers(self, configurations: list[configuration], constants) -> None:        
@@ -312,13 +320,13 @@ class datasets:
             image=constants.quads_transformer,
             image_pull_policy=models.ImagePullPolicy.always,
             args=[
-                f"/app/data/{type}",
-                f"/app/data",
+                f"/app/data/data/{type}",
+                f"/app/data/data",
                 "*",
                 type,
                 "BSBM"
             ],
             volumes=[volume_mount],
-            resources=Resources(memory_request="4Gi", cpu_request="2")
+            resources=Resources(memory_request="4Gi", memory_limit="8Gi", cpu_limit="1")
         )
 
