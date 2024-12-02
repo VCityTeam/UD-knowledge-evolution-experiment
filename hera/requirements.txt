@@ -1,0 +1,2 @@
+git+https://github.com/VCityTeam/hera_utils
+git+https://github.com/VCityTeam/hera_k8s_utils

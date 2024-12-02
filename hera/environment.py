@@ -1,5 +1,5 @@
-from hera_utils import k8s_cluster
-from hera_utils import num_exp_environment, Struct
+from hera_k8s_utils import k8s_cluster
+from hera_k8s_utils import num_exp_environment, Struct
 from configuration import configuration
 
 class environment(num_exp_environment):
