@@ -1,5 +1,3 @@
-import uuid
-
 class layout:
     @staticmethod
     def rename_resource(base_name: str) -> str:

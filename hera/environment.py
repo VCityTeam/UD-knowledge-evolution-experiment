@@ -1,5 +1,4 @@
-from hera_k8s_utils import k8s_cluster
-from hera_k8s_utils import num_exp_environment, Struct
+from hera_k8s_utils import k8s_cluster, num_exp_environment, Struct
 from configuration import configuration
 
 class environment(num_exp_environment):
@@ -25,13 +24,13 @@ class environment(num_exp_environment):
         self.persisted_volume.mount_path = "/data"
 
     def compute_dataset_volume_name(self, configuration: configuration):
-        return f"volume-{configuration.product}-{configuration.version}-{configuration.step}-{configuration.variability}"
+        return f"volume-{configuration.product}-{configuration.version}-{configuration.step}"
 
     def compute_logging_volume_name(self, configuration: configuration):
-        return f"logging-{configuration.product}-{configuration.version}-{configuration.step}-{configuration.variability}"
+        return f"logging-{configuration.product}-{configuration.version}-{configuration.step}"
 
     def compute_configmap_volume_name(self, configuration: configuration, type: str):
-        return f"configmap-{type}-{configuration.product}-{configuration.version}-{configuration.step}-{configuration.variability}"
+        return f"configmap-{type}-{configuration.product}-{configuration.version}-{configuration.step}"
 
     def compute_dataset_volume_size(self, configuration: configuration):
         number_of_datasets = 3 # (triples + quads(relational) + quads(graph))

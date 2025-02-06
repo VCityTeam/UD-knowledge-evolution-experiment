@@ -23,8 +23,7 @@ if __name__ == "__main__":
     parameters = {
         "versions": args.versions,
         "products": args.products,
-        "steps": args.steps,
-        "variabilities": args.variabilities
+        "steps": args.steps
     }
 
     experiment_dbs = databases(layout, environment)
@@ -34,8 +33,8 @@ if __name__ == "__main__":
     # Generate the configurations for the databases and datasets
     dbs_configurations: list[configuration] = experiment_dbs.generate_databases_configurations(parameters)
     # Generate the configurations for the datasets (dss is a subset of ds)
-    # for a set of configuration having the same product, step and variability, only the maximum version is considered
-    # because the generated dataset (with the maximum version) contains all other configuration with the same product, step, and variability
+    # for a set of configuration having the same product and step, only the maximum version is considered
+    # because the generated dataset (with the maximum version) contains all other configuration with the same product and step
     dss_configurations: list[configuration] = experiment_datasets.generate_datasets_configurations(parameters)
 
     with Workflow(generate_name="converg-experiment-", entrypoint="converg-step", parallelism=50) as w:
@@ -64,8 +63,7 @@ if __name__ == "__main__":
                 instance_args = {
                     "version": ds_configuration.version,
                     "product": ds_configuration.product,
-                    "step": ds_configuration.step,
-                    "variability": ds_configuration.variability
+                    "step": ds_configuration.step
                 }
                 task_print_ds_inst = print_instance_args(name=f'print-ds-instance-args-{str(ds_configuration)}', arguments={"arguments": instance_args})
                 
@@ -89,15 +87,14 @@ if __name__ == "__main__":
 
                 # --------------------- Begin DB tasking --------------------- # 
                 # link the current ds_configuration with a subset of dbs_configuration.
-                # This is done by matching the product, step, and variability (of the dbs_configuration) with the current ds_configuration
-                # we match a ds_configuration to configurations with the same product, step, and variability but different versions
+                # This is done by matching the product and step (of the dbs_configuration) with the current ds_configuration
+                # we match a ds_configuration to configurations with the same product and step but different versions
                 associated_dbs_configurations = experiment_dbs.filter_dbs_configurations_by_ds_configuration(dbs_configurations, ds_configuration)
                 for db_configuration in associated_dbs_configurations:
                     instance_args = {
                         "version": db_configuration.version,
                         "product": db_configuration.product,
                         "step": db_configuration.step,
-                        "variability": db_configuration.variability,
                         "postgres": constants.postgres,
                         "blazegraph": constants.blazegraph,
                         "quaque": constants.quaque,

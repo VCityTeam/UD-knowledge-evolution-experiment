@@ -229,7 +229,7 @@ class datasets:
                 name=bsbm_container_name,
                 image=constants.bsbm,
                 image_pull_policy=models.ImagePullPolicy.always,
-                args=["generate-n", configuration.version, configuration.product, configuration.step, configuration.variability],
+                args=["generate-n", configuration.version, configuration.product, configuration.step],
                 volumes=[volume_mount],
                 resources=Resources(memory_request="4Gi", cpu_request="2")
             )
@@ -238,17 +238,16 @@ class datasets:
         """
         Generate dataset configurations based on the provided arguments.
         This method takes an object containing various arguments and generates a list of dataset configurations.
-        The configurations are created by taking the Cartesian product of the provided versions, products, steps, 
-        and variabilities. Note that the configurations set of the datasets are a subset of server configurations.
+        The configurations are created by taking the Cartesian product of the provided versions, products and steps.
+        Note that the configurations set of the datasets are a subset of server configurations.
         Args:
             arguments (object): An object containing the following keys:
                 - versions (list): A list of version numbers. (here, only the maximum version is considered)
                 - products (list): A list of product names.
                 - steps (list): A list of steps.
-                - variabilities (list): A list of variabilities.
         Returns:
             list: A list of dataset configurations, where each configuration is represented as a tuple 
-                  (version, product, step, variability).
+                  (version, product, step).
         """
         versions = [max(arguments["versions"])]
 
@@ -256,17 +255,15 @@ class datasets:
             versions,
             arguments["products"],
             arguments["steps"],
-            arguments["variabilities"]
         ))
 
         return [
                 configuration(
                     version,
                     product,
-                    step,
-                    variability
+                    step
                 )
-            for (version, product, step, variability) in configurations
+            for (version, product, step) in configurations
         ]
     
     def create_datasets_transformers_containers(self, configurations: list[configuration], constants) -> None:        

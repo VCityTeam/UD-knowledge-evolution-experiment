@@ -40,11 +40,4 @@ def parse_arguments(logger=logging.getLogger(__name__)):
         nargs="+",
     )
 
-    experience_parser.parser.add(
-        "--variabilities",
-        help="List of BSBM products variability to be used in the numerical experiment",
-        type=int,
-        nargs="+",
-    )
-
     return experience_parser.parser.parse_args()

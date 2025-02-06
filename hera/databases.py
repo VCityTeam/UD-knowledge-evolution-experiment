@@ -25,31 +25,28 @@ class databases:
                 - "versions" (list): A list of version identifiers.
                 - "products" (list): A list of product identifiers.
                 - "steps" (list): A list of step identifiers.
-                - "variabilities" (list): A list of variability identifiers.
 
         Returns:
             list: A list of configuration objects, each representing a unique combination
-                  of version, product, step, and variability.
+                  of version, product and step.
         """
         configurations = list(product(
             parameters["versions"],
             parameters["products"],
-            parameters["steps"],
-            parameters["variabilities"]
+            parameters["steps"]
         ))
 
         return [
                 configuration(
                     version,
                     product,
-                    step,
-                    variability
+                    step
                 )
-            for (version, product, step, variability) in configurations
+            for (version, product, step) in configurations
         ]
     
     def filter_dbs_configurations_by_ds_configuration(self, dbs_configurations: list[configuration], ds_configuration: configuration) -> list:
-        return [c for c in dbs_configurations if c.product == ds_configuration.product and c.step == ds_configuration.step and c.variability == ds_configuration.variability]
+        return [c for c in dbs_configurations if c.product == ds_configuration.product and c.step == ds_configuration.step]
 
     def create_postgres_container_service(self, configuration: configuration, constants) -> None:
         """
