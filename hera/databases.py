@@ -94,6 +94,52 @@ class databases:
             manifest=manifest,
         )
 
+    def create_postgres_flat_container_service(self, configuration: configuration, constants) -> None:
+        """
+        Creates a PostgreSQL container service within a Kubernetes cluster.
+        This method sets up a PostgreSQL container with the specified configuration and constants.
+        It defines the container's environment variables, image, and other properties, and then
+        creates a corresponding Kubernetes service manifest to expose the container.
+        Args:
+            configuration (configuration): The configuration object containing settings for the PostgreSQL container.
+            constants: An object containing constant values such as image name, username, and password.
+        Returns:
+            None
+        """
+        postgres_flat_container_name = self.layout.create_postgres_flat_container_name(configuration)
+        postgres_flat_service_name = self.layout.create_postgres_flat_service_name(configuration)
+        Container(
+            name=postgres_flat_container_name,
+            image=constants.postgres,
+            image_pull_policy=models.ImagePullPolicy.always,
+            daemon=True,
+            labels={"app": postgres_flat_container_name},
+            env=[
+                Env(
+                    name="POSTGRES_DB",
+                    value=self.layout.create_database_identifier(configuration),
+                ),
+                Env(name="POSTGRES_USER", value=constants.postgres_username),
+                Env(name="POSTGRES_PASSWORD", value=constants.postgres_password),
+                Env(name="PGDATA", value=self.environment.database_data(configuration)),
+            ],
+            args=[
+                "-c", "log_duration=on",
+                "-c", "log_statement=all",
+                "-c", "log_destination=stderr,jsonlog",
+                "-c", "logging_collector=on"
+            ],
+            resources=Resources(memory_request="8Gi", cpu_request="2")
+        )
+
+        manifest = create_service_manifest(postgres_flat_service_name, str(configuration), postgres_flat_container_name, 5432, 5432)
+
+        Resource(
+            name=postgres_flat_service_name,
+            action="create",
+            manifest=manifest,
+        )
+
     def create_blazegraph_container_service(self, configuration: configuration, constants) -> None:
         """
         Creates a Blazegraph container service.
@@ -153,6 +199,7 @@ class databases:
         """
         for configuration in configurations:
             self.create_postgres_container_service(configuration, constants)
+            self.create_postgres_flat_container_service(configuration, constants)
             self.create_blazegraph_container_service(configuration, constants)
 
     def create_dbs_queriers(self, configurations: list[configuration], constants) -> None:

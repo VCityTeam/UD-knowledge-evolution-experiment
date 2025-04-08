@@ -35,14 +35,14 @@ class environment(num_exp_environment):
     def compute_dataset_volume_size(self, configuration: configuration):
         number_of_datasets = 3 # (triples + quads(relational) + quads(graph))
         number_of_triples_one_version = configuration.product + configuration.step * configuration.version
-        size_one_triple = 0.05 # Mi
+        size_one_triple = 0.1 # Mi
         total = (number_of_triples_one_version * size_one_triple) * (configuration.version * number_of_datasets)
         return f'{total}Mi'
 
     def compute_logging_volume_size(self, configuration: configuration):
         number_of_iterations = 2 # (import + queries)
         number_of_quads_one_version = configuration.product + configuration.step * configuration.version
-        size_one_quad_log = 0.075 # Mi
+        size_one_quad_log = 0.1 # Mi
         total = (number_of_quads_one_version * size_one_quad_log) * (configuration.version * number_of_iterations)
         return f'{total}Mi'
 

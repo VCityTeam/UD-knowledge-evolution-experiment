@@ -10,7 +10,7 @@ from configuration import configuration
 from hera.workflows import (
     Task,
     DAG,
-    Workflow,
+    Workflow
 )
 
 if __name__ == "__main__":
@@ -43,7 +43,7 @@ if __name__ == "__main__":
         # function building all the server containers/services
         experiment_servers.create_servers_containers_services(dbs_configurations, constants)
         # function building all the logging volumes
-        experiment_datasets.create_logging_volumes(dbs_configurations)
+        experiment_datasets.create_logging_volumes(dbs_configurations) # FLAT TODO
         # function building all the dataset volumes
         experiment_datasets.create_datasets_volumes(dss_configurations)
         # function building all the dataset containers
@@ -51,9 +51,9 @@ if __name__ == "__main__":
         # function building all the dataset transformers
         experiment_datasets.create_datasets_transformers_containers(dss_configurations, constants)
         # function building all the databases queriers
-        experiment_dbs.create_dbs_queriers(dbs_configurations, constants)
+        experiment_dbs.create_dbs_queriers(dbs_configurations, constants) # FLAT TODO
         # function building all services remover
-        experiment_dbs.create_services_remover(dbs_configurations)
+        experiment_dbs.create_services_remover(dbs_configurations) # FLAT TODO
 
         with DAG(name="converg-step"):
             task_print_env = print_environment(name="print-environment", arguments={"parameters": parameters})
@@ -98,7 +98,9 @@ if __name__ == "__main__":
                         "postgres": constants.postgres,
                         "blazegraph": constants.blazegraph,
                         "quaque": constants.quaque,
+                        "quaque_flat": constants.quaque,
                         "quader": constants.quader,
+                        "quader_flat": constants.quader,
                     }
                     task_print_dbr_inst = print_instance_args(name=f'print-dbr-instance-args-{str(db_configuration)}', arguments={"arguments": instance_args})
                     task_print_bg_inst = print_instance_args(name=f'print-bg-instance-args-{str(db_configuration)}', arguments={"arguments": instance_args})
@@ -108,8 +110,10 @@ if __name__ == "__main__":
 
                     # init all the databases and services (postgresql and blazegraph)
                     postgres_container_name = layout.create_postgres_container_name(db_configuration)
+                    postgres_flat_container_name = layout.create_postgres_flat_container_name(db_configuration)
                     blazegraph_container_name = layout.create_blazegraph_container_name(db_configuration)
                     postgres_service_name = layout.create_postgres_service_name(db_configuration)
+                    postgres_flat_service_name = layout.create_postgres_flat_service_name(db_configuration)
                     blazegraph_service_name = layout.create_blazegraph_service_name(db_configuration)
 
                     # create the tasks for the logging volumes
@@ -118,26 +122,37 @@ if __name__ == "__main__":
                     # create the tasks for the databases and their services
                     task_bg_s = Task(name=f'{blazegraph_service_name}-task', template=blazegraph_service_name)
                     task_pg_s = Task(name=f'{postgres_service_name}-task', template=postgres_service_name)
+                    task_pg_flat_s = Task(name=f'{postgres_flat_service_name}-task', template=postgres_flat_service_name)
                     task_pg_c = Task(name=f'{postgres_container_name}-task', template=postgres_container_name)
+                    task_pg_flat_c = Task(name=f'{postgres_flat_container_name}-task', template=postgres_flat_container_name)
                     task_bg_c = Task(name=f'{blazegraph_container_name}-task', template=blazegraph_container_name)
 
                     # init all the servers and their associated service (quader and quaque)
                     quader_container_name = layout.create_quader_container_name(db_configuration)
+                    quader_flat_container_name = layout.create_quader_flat_container_name(db_configuration)
                     quaque_container_name = layout.create_quaque_container_name(db_configuration)
+                    quaque_flat_container_name = layout.create_quaque_flat_container_name(db_configuration)
                     quader_service_name = layout.create_quader_service_name(db_configuration)
+                    quader_flat_service_name = layout.create_quader_flat_service_name(db_configuration)
                     quaque_service_name = layout.create_quaque_service_name(db_configuration)
+                    quaque_flat_service_name = layout.create_quaque_flat_service_name(db_configuration)
 
                     # create the tasks for the servers and their services
                     task_quader_s = Task(name=f'{quader_service_name}-task', template=quader_service_name)
+                    task_quader_flat_s = Task(name=f'{quader_flat_service_name}-task', template=quader_flat_service_name)
                     task_quaque_s = Task(name=f'{quaque_service_name}-task', template=quaque_service_name)
+                    task_quaque_flat_s = Task(name=f'{quaque_flat_service_name}-task', template=quaque_flat_service_name)
                     task_quader_c = Task(name=f'{quader_container_name}-task', template=quader_container_name)
+                    task_quader_flat_c = Task(name=f'{quader_flat_container_name}-task', template=quader_flat_container_name)
                     task_quaque_c = Task(name=f'{quaque_container_name}-task', template=quaque_container_name)
+                    task_quaque_flat_c = Task(name=f'{quaque_flat_container_name}-task', template=quaque_flat_container_name)
 
                     # init all the importers (relational and theoretical)
                     relational_importer_container_name = layout.create_typed_importer_container_name(db_configuration, 'relational')
+                    relational_flat_importer_container_name = layout.create_typed_importer_container_name(db_configuration, 'relational-flat')
                     theoretical_importer_container_name = layout.create_typed_importer_container_name(db_configuration, 'theoretical')
 
-                    # create the tasks for the importers
+                    # create the tasks for the condensed importers
                     rel_importer_task = create_relational_dataset_importer(
                         name=f'{relational_importer_container_name}-task',
                         arguments={
@@ -145,8 +160,21 @@ if __name__ == "__main__":
                             "existing_volume_name": environment.compute_dataset_volume_name(ds_configuration),
                             "number_of_versions": db_configuration.version,
                             "hostname": quader_service_name
-                        },
+                        }
                     )
+
+                    # create the tasks for the flat importers
+                    rel_flat_importer_task = create_relational_dataset_importer(
+                        name=f'{relational_flat_importer_container_name}-task',
+                        arguments={
+                            "python_requests_image": constants.python_requests,
+                            "existing_volume_name": environment.compute_dataset_volume_name(ds_configuration),
+                            "number_of_versions": db_configuration.version,
+                            "hostname": quader_flat_service_name
+                        }
+                    )
+
+                    # create the tasks for the theoretical importers
                     theor_importer_task = create_theoretical_dataset_importer(
                         name=f'{theoretical_importer_container_name}-task',
                         arguments={
@@ -154,7 +182,7 @@ if __name__ == "__main__":
                             "existing_volume_name": environment.compute_dataset_volume_name(ds_configuration),
                             "number_of_versions": db_configuration.version,
                             "hostname": blazegraph_service_name
-                        },
+                        }
                     )
 
                     # create the names for the queriers
@@ -170,12 +198,12 @@ if __name__ == "__main__":
                     # --------------------- End DB tasking --------------------- #
 
                     # --------------------- Begin DB workflow --------------------- #
-                    task_print_env >> task_print_dbr_inst >> [task_logging_volume, task_pg_s, task_quader_s, task_quaque_s] >> task_pg_c >> task_quader_c >> task_quaque_c >> rel_importer_task
+                    task_print_env >> task_print_dbr_inst >> task_logging_volume >> [[task_pg_flat_s, task_quader_flat_s, task_quaque_flat_s] >> task_pg_flat_c >> task_quader_flat_c >> task_quaque_flat_c >> rel_flat_importer_task,[task_pg_s, task_quader_s, task_quaque_s] >> task_pg_c >> task_quader_c >> task_quaque_c >> rel_importer_task]                    
                     task_print_env >> task_print_bg_inst >> task_bg_s >> task_bg_c >> theor_importer_task
                     # --------------------- End DB workflow --------------------- # 
 
                     # --------------------- Begin transformer to importer workflow --------------------- #
-                    task_relational_transformer >> rel_importer_task >> task_querier
+                    task_relational_transformer >> [rel_importer_task, rel_flat_importer_task] >> task_querier
                     task_theoretical_transformer >> theor_importer_task >> task_querier
                     # --------------------- End transformer to importer workflow --------------------- # 
 
