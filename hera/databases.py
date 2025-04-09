@@ -224,12 +224,13 @@ class databases:
 
         blazegraph_service_name = self.layout.create_blazegraph_service_name(configuration)
         quaque_service_name = layout.create_quaque_service_name(configuration)
+        quaque_flat_service_name = layout.create_quaque_flat_service_name(configuration)
 
         Container(
             name=querier_container_name,
             image=constants.quads_querier,
             image_pull_policy=models.ImagePullPolicy.always,
-            args=[blazegraph_service_name, quaque_service_name]
+            args=[blazegraph_service_name, quaque_service_name, quaque_flat_service_name]
         )
 
     def create_services_remover(self, configurations: list[configuration]) -> None:
