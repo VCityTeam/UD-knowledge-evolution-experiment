@@ -2,7 +2,7 @@ import experiment_layout
 from parse_arguments import parse_arguments
 from environment import environment
 from experiment_constants import constants
-from experiment_utils import print_environment, print_instance_args
+from experiment_utils import print_workflow_parameters, print_database_config
 from databases import databases
 from servers import interface_servers
 from datasets import datasets, create_relational_dataset_importer, create_theoretical_dataset_importer
@@ -39,7 +39,7 @@ if __name__ == "__main__":
     dss_configurations: list[configuration] = experiment_datasets.generate_datasets_configurations(
         parameters)
 
-    with Workflow(generate_name="converg-experiment-", entrypoint="converg-step", parallelism=50) as w:
+    with Workflow(generate_name="converg-xp-", entrypoint="converg-step") as w:
         # function building all the database containers/services
         experiment_dbs.create_dbs_containers_services(
             dbs_configurations, constants)
@@ -48,7 +48,7 @@ if __name__ == "__main__":
             dbs_configurations, constants)
         # function building all the logging volumes
         experiment_datasets.create_logging_volumes(
-            dbs_configurations)  # FLAT TODO
+            dbs_configurations) 
         # function building all the dataset volumes
         experiment_datasets.create_datasets_volumes(dss_configurations)
         # function building all the dataset containers
@@ -59,13 +59,13 @@ if __name__ == "__main__":
             dss_configurations, constants)
         # function building all the databases queriers
         experiment_dbs.create_dbs_queriers(
-            dbs_configurations, constants)  # FLAT TODO
+            dbs_configurations, constants)
         # function building all services remover
         experiment_dbs.create_services_remover(dbs_configurations)
 
         with DAG(name="converg-step"):
-            task_print_env = print_environment(
-                name="print-environment", arguments={"parameters": parameters})
+            task_print_workflow_params = print_workflow_parameters(
+                name="workflow-params", arguments={"parameters": parameters})
 
             for ds_configuration in dss_configurations:
                 # --------------------- Begin DS tasking --------------------- #
@@ -74,8 +74,8 @@ if __name__ == "__main__":
                     "product": ds_configuration.product,
                     "step": ds_configuration.step
                 }
-                task_print_ds_inst = print_instance_args(
-                    name=f'print-ds-instance-args-{str(ds_configuration)}', arguments={"arguments": instance_args})
+                task_print_ds_inst = print_database_config(
+                    name=f'ds-config-{str(ds_configuration)}', arguments={"arguments": instance_args})
 
                 # init all the datasets volumes
                 volume_mount = environment.compute_dataset_volume_name(
@@ -100,7 +100,7 @@ if __name__ == "__main__":
                 # --------------------- End DS tasking --------------------- #
 
                 # --------------------- Begin BSBM workflow --------------------- #
-                task_print_env >> task_print_ds_inst >> task_volume >> task_dataset_generator >> [
+                task_print_workflow_params >> task_print_ds_inst >> task_volume >> task_dataset_generator >> [
                     task_relational_transformer, task_theoretical_transformer]
                 # --------------------- End BSBM workflow --------------------- #
 
@@ -122,10 +122,8 @@ if __name__ == "__main__":
                         "quader": constants.quader,
                         "quader_flat": constants.quader,
                     }
-                    task_print_dbr_inst = print_instance_args(
-                        name=f'print-dbr-instance-args-{str(db_configuration)}', arguments={"arguments": instance_args})
-                    task_print_bg_inst = print_instance_args(
-                        name=f'print-bg-instance-args-{str(db_configuration)}', arguments={"arguments": instance_args})
+                    task_print_db_inst = print_database_config(
+                        name=f'db-config-{str(db_configuration)}', arguments={"arguments": instance_args})
 
                     # init all the logging volumes
                     logging_volume_mount_name = environment.compute_logging_volume_name(
@@ -257,13 +255,15 @@ if __name__ == "__main__":
                     # --------------------- End DB tasking --------------------- #
 
                     # --------------------- Begin DB workflow --------------------- #
-                    task_print_env >> task_print_dbr_inst >> task_logging_volume >> [
-                        task_pg_flat_c >> [task_pg_flat_s, task_quader_flat_s,
-                                           task_quaque_flat_s] >> task_quader_flat_c >> task_quaque_flat_c >> rel_flat_importer_task,
-                        task_pg_c >> [
-                            task_pg_s, task_quader_s, task_quaque_s] >> task_quader_c >> task_quaque_c >> rel_importer_task
+                    task_print_ds_inst >> task_print_db_inst >> task_logging_volume >> [
+                        task_pg_flat_c,
+                        task_pg_c,
+                        task_bg_c
                     ]
-                    task_print_env >> task_print_bg_inst >> task_bg_c >> task_bg_s >> theor_importer_task
+
+                    task_pg_flat_c >> task_pg_flat_s >> task_quader_flat_s >> task_quaque_flat_s >> task_quader_flat_c >> task_quaque_flat_c >> rel_flat_importer_task
+                    task_pg_c >> task_pg_s >> task_quader_s >> task_quaque_s >> task_quader_c >> task_quaque_c >> rel_importer_task
+                    task_bg_c >> task_bg_s >> theor_importer_task
                     # --------------------- End DB workflow --------------------- #
 
                     # --------------------- Begin transformer to importer workflow --------------------- #
