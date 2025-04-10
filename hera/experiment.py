@@ -12,6 +12,7 @@ from hera.workflows import (
     DAG,
     Workflow
 )
+from hera.workflows.models import Toleration
 
 if __name__ == "__main__":
     args = parse_arguments()
@@ -39,7 +40,7 @@ if __name__ == "__main__":
     dss_configurations: list[configuration] = experiment_datasets.generate_datasets_configurations(
         parameters)
 
-    with Workflow(generate_name="converg-xp-", entrypoint="converg-step") as w:
+    with Workflow(generate_name="converg-xp-", entrypoint="converg-step", tolerations=[Toleration(key="gpu", operator="Exists", effect="PreferNoSchedule")]) as w:
         # function building all the database containers/services
         experiment_dbs.create_dbs_containers_services(
             dbs_configurations, constants)
@@ -261,14 +262,17 @@ if __name__ == "__main__":
                         task_bg_c
                     ]
 
-                    task_pg_flat_c >> task_pg_flat_s >> task_quader_flat_s >> task_quaque_flat_s >> task_quader_flat_c >> task_quaque_flat_c >> rel_flat_importer_task
-                    task_pg_c >> task_pg_s >> task_quader_s >> task_quaque_s >> task_quader_c >> task_quaque_c >> rel_importer_task
+                    task_pg_flat_c >> task_pg_flat_s >> task_quader_flat_c >> task_quader_flat_s >> rel_flat_importer_task
+                    task_pg_c >> task_pg_s >> task_quader_c >> task_quader_s >> rel_importer_task
                     task_bg_c >> task_bg_s >> theor_importer_task
                     # --------------------- End DB workflow --------------------- #
 
                     # --------------------- Begin transformer to importer workflow --------------------- #
-                    task_relational_transformer >> [
-                        rel_importer_task, rel_flat_importer_task] >> task_querier
+                    task_relational_transformer >> [rel_importer_task, rel_flat_importer_task]
+                    
+                    rel_importer_task >> task_quaque_c >> task_quaque_s >> task_querier
+                    rel_flat_importer_task >> task_quaque_flat_c >> task_quaque_flat_s >> task_querier
+                    
                     task_theoretical_transformer >> theor_importer_task >> task_querier
                     # --------------------- End transformer to importer workflow --------------------- #
 
