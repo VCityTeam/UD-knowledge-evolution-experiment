@@ -40,7 +40,12 @@ if __name__ == "__main__":
     dss_configurations: list[configuration] = experiment_datasets.generate_datasets_configurations(
         parameters)
 
-    with Workflow(generate_name="converg-xp-", entrypoint="converg-step", tolerations=[Toleration(key="gpu", operator="Exists", effect="PreferNoSchedule")]) as w:
+    with Workflow(
+        generate_name="converg-xp-",
+        entrypoint="converg-step",
+        tolerations=[Toleration(
+            key="gpu", operator="Exists", effect="PreferNoSchedule")]
+    ) as w:
         # function building all the database containers/services
         experiment_dbs.create_dbs_containers_services(
             dbs_configurations, constants)
@@ -49,7 +54,7 @@ if __name__ == "__main__":
             dbs_configurations, constants)
         # function building all the logging volumes
         experiment_datasets.create_logging_volumes(
-            dbs_configurations) 
+            dbs_configurations)
         # function building all the dataset volumes
         experiment_datasets.create_datasets_volumes(dss_configurations)
         # function building all the dataset containers
@@ -268,11 +273,12 @@ if __name__ == "__main__":
                     # --------------------- End DB workflow --------------------- #
 
                     # --------------------- Begin transformer to importer workflow --------------------- #
-                    task_relational_transformer >> [rel_importer_task, rel_flat_importer_task]
-                    
+                    task_relational_transformer >> [
+                        rel_importer_task, rel_flat_importer_task]
+
                     rel_importer_task >> task_quaque_c >> task_quaque_s >> task_querier
                     rel_flat_importer_task >> task_quaque_flat_c >> task_quaque_flat_s >> task_querier
-                    
+
                     task_theoretical_transformer >> theor_importer_task >> task_querier
                     # --------------------- End transformer to importer workflow --------------------- #
 

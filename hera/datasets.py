@@ -6,8 +6,7 @@ from hera.workflows import (
     script,
     Parameter,
     Resources,
-    Env,
-    RetryStrategy
+    Env
 )
 from experiment_utils import create_volume_manifest
 from experiment_layout import layout
@@ -31,7 +30,7 @@ from itertools import product
             mount_path="/app/data",
         )
     ],
-    resources=Resources(memory_request="2Gi"),
+    resources=Resources(memory_limit="2Gi"),
     env=[
         Env(name="PYTHONUNBUFFERED", value="1"),
     ]
@@ -101,7 +100,7 @@ def create_relational_dataset_importer(
             mount_path="/app/data",
         )
     ],
-    resources=Resources(memory_request="2Gi"),
+    resources=Resources(memory_limit="2Gi"),
     env=[
         Env(name="PYTHONUNBUFFERED", value="1"),
     ]
@@ -243,7 +242,7 @@ class datasets:
                 image_pull_policy=models.ImagePullPolicy.always,
                 args=["generate-n", configuration.version, configuration.product, configuration.step],
                 volumes=[volume_mount],
-                resources=Resources(memory_request="4Gi", cpu_request="2")
+                resources=Resources(memory_request="4Gi", memory_limit="8Gi", cpu_limit="1")
             )
 
     def generate_datasets_configurations(self, arguments: object) -> list[configuration]:
@@ -328,6 +327,6 @@ class datasets:
                 "BSBM"
             ],
             volumes=[volume_mount],
-            resources=Resources(memory_request="4Gi", cpu_request="2")
+            resources=Resources(memory_request="4Gi", memory_limit="8Gi", cpu_limit="1")
         )
 
