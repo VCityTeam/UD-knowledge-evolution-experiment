@@ -10,7 +10,7 @@ from configuration import configuration
 from hera.workflows import (
     Task,
     DAG,
-    Workflow
+    WorkflowTemplate
 )
 from hera.workflows.models import Toleration
 
@@ -40,12 +40,12 @@ if __name__ == "__main__":
     dss_configurations: list[configuration] = experiment_datasets.generate_datasets_configurations(
         parameters)
 
-    with Workflow(
+    with WorkflowTemplate(
         generate_name="converg-xp-",
         entrypoint="converg-step",
         tolerations=[Toleration(
             key="gpu", operator="Exists", effect="PreferNoSchedule")]
-    ) as w:
+    ) as wt:
         # function building all the database containers/services
         experiment_dbs.create_dbs_containers_services(
             dbs_configurations, constants)
@@ -284,4 +284,4 @@ if __name__ == "__main__":
 
                     task_querier >> task_remove_services
 
-        w.create()
+        wt.create()

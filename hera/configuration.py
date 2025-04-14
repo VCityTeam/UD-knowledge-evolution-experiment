@@ -12,3 +12,10 @@ class configuration:
     
     def __repr__(self):
         return str(self)
+
+    def to_dict(self):
+        return {
+            "version": self.version,
+            "product": self.product,
+            "step": self.step
+        }
