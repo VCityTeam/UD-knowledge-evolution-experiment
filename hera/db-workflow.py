@@ -3,9 +3,10 @@ from environment import environment
 from hera.workflows import (
     DAG,
     WorkflowTemplate,
-    script
+    script,
+    Task
 )
-from hera.workflows.models import Toleration, Arguments, Parameter
+from hera.workflows.models import Toleration, Arguments, Parameter, TemplateRef
 
 
 @script(inputs=[Parameter(name="db_config"), Parameter(name="ds_config")])
@@ -37,7 +38,45 @@ if __name__ == "__main__":
                     "db_config": dag.get_parameter("db_config"),
                     "ds_config": dag.get_parameter("ds_config")
                 })
+            
+            task_blazegraph = Task(
+                name="blazegraph-instance",
+                template_ref=TemplateRef(
+                    name="blazegraph-xp", template="blazegraph-step"),
+                arguments=Arguments(
+                    parameters=[
+                        dag.get_parameter("ds_config"),
+                        dag.get_parameter("db_config")
+                    ]
+                ),
+            )
 
-            task_print_db_params
+            task_converg_condensed = Task(
+                name="converg-condensed-instance",
+                template_ref=TemplateRef(
+                    name="converg-xp", template="converg-step"),
+                arguments=Arguments(
+                    parameters=[
+                        dag.get_parameter("ds_config"),
+                        dag.get_parameter("db_config"),
+                        Parameter(name="mode", value="condensed")
+                    ]
+                ),
+            )
+
+            task_converg_flat = Task(
+                name="converg-flat-instance",
+                template_ref=TemplateRef(
+                    name="converg-xp", template="converg-step"),
+                arguments=Arguments(
+                    parameters=[
+                        dag.get_parameter("ds_config"),
+                        dag.get_parameter("db_config"),
+                        Parameter(name="mode", value="flat")
+                    ]
+                ),
+            )
+
+            task_print_db_params >> [task_blazegraph, task_converg_condensed, task_converg_flat]
 
         wt.create()
