@@ -83,7 +83,7 @@ class databases:
                 "-c", "log_destination=stderr,jsonlog",
                 "-c", "logging_collector=on"
             ],
-            resources=Resources(memory_request="4Gi", memory_limit="8Gi", cpu_limit="1")
+            resources=Resources(memory_request=f"{constants.memory_request}Gi", memory_limit=f"{constants.memory_limit}Gi", cpu_limit=constants.cpu_limit)
         )
 
         manifest = create_service_manifest(postgres_service_name, str(configuration), postgres_container_name, 5432, 5432)
@@ -129,7 +129,7 @@ class databases:
                 "-c", "log_destination=stderr,jsonlog",
                 "-c", "logging_collector=on"
             ],
-            resources=Resources(memory_request="4Gi", memory_limit="8Gi", cpu_limit="1")
+            resources=Resources(memory_request=f"{constants.memory_request}Gi", memory_limit=f"{constants.memory_limit}Gi", cpu_limit=constants.cpu_limit)
         )
 
         manifest = create_service_manifest(postgres_flat_service_name, str(configuration), postgres_flat_container_name, 5432, 5432)
@@ -169,10 +169,10 @@ class databases:
                     name="BLAZEGRAPH_QUADS",
                     value="true",
                 ),
-                Env(name="BLAZEGRAPH_TIMEOUT", value="180000"),
+                Env(name="BLAZEGRAPH_TIMEOUT", value="0"),
                 Env(name="BLAZEGRAPH_MEMORY", value="8G"),
             ],
-            resources=Resources(memory_request="4Gi", memory_limit="8Gi", cpu_limit="1")
+            resources=Resources(memory_request=f"{constants.memory_request}Gi", memory_limit=f"{constants.memory_limit}Gi", cpu_limit=constants.cpu_limit)
         )
 
         manifest = create_service_manifest(blazegraph_service_name, str(configuration), blazegraph_container_name, 9999, 8080)

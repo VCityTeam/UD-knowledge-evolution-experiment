@@ -13,6 +13,7 @@ from experiment_layout import layout
 from environment import environment
 from configuration import configuration
 from itertools import product
+from experiment_constants import constants
 
 
 @script(
@@ -30,7 +31,7 @@ from itertools import product
             mount_path="/app/data",
         )
     ],
-    resources=Resources(memory_limit="2Gi"),
+    resources=Resources(memory_limit=f"{constants.memory_limit}Gi"),
     env=[
         Env(name="PYTHONUNBUFFERED", value="1"),
     ]
@@ -100,7 +101,7 @@ def create_relational_dataset_importer(
             mount_path="/app/data",
         )
     ],
-    resources=Resources(memory_limit="2Gi"),
+    resources=Resources(memory_limit=f"{constants.memory_limit}Gi"),
     env=[
         Env(name="PYTHONUNBUFFERED", value="1"),
     ]
@@ -242,7 +243,7 @@ class datasets:
                 image_pull_policy=models.ImagePullPolicy.always,
                 args=["generate-n", configuration.version, configuration.product, configuration.step],
                 volumes=[volume_mount],
-                resources=Resources(memory_request="4Gi", memory_limit="8Gi", cpu_limit="1")
+                resources=Resources(memory_request=f"{constants.memory_request}Gi", memory_limit=f"{constants.memory_limit}Gi", cpu_limit=constants.cpu_limit)
             )
 
     def generate_datasets_configurations(self, arguments: object) -> list[configuration]:
@@ -327,6 +328,6 @@ class datasets:
                 "BSBM"
             ],
             volumes=[volume_mount],
-            resources=Resources(memory_request="4Gi", memory_limit="8Gi", cpu_limit="1")
+            resources=Resources(memory_request=f"{constants.memory_request}Gi", memory_limit=f"{constants.memory_limit}Gi", cpu_limit=constants.cpu_limit)
         )
 

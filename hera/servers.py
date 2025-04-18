@@ -59,7 +59,7 @@ class interface_servers:
                 Env(name="SPRING_DATASOURCE_USERNAME", value=constants.postgres_username),
                 Env(name="SPRING_DATASOURCE_PASSWORD", value=constants.postgres_password),
             ],
-            resources=Resources(memory_request="4Gi", memory_limit="8Gi", cpu_limit="1"),
+            resources=Resources(memory_request=f"{constants.memory_request}Gi", memory_limit=f"{constants.memory_limit}Gi", cpu_limit=constants.cpu_limit),
             outputs=Artifact(
                 name=f"{quader_container_name}-log",
                 path="/tmp/argo/outputs/logs/main.log"
@@ -102,7 +102,7 @@ class interface_servers:
                 Env(name="SPRING_DATASOURCE_USERNAME", value=constants.postgres_username),
                 Env(name="SPRING_DATASOURCE_PASSWORD", value=constants.postgres_password),
             ],
-            resources=Resources(memory_request="4Gi", memory_limit="8Gi", cpu_limit="1"),
+            resources=Resources(memory_request=f"{constants.memory_request}Gi", memory_limit=f"{constants.memory_limit}Gi", cpu_limit=constants.cpu_limit),
             outputs=Artifact(
                 name=f"{quader_flat_container_name}-log",
                 path="/tmp/argo/outputs/logs/main.log"
@@ -142,7 +142,7 @@ class interface_servers:
                 Env(name="DATASOURCE_USERNAME", value=constants.postgres_username),
                 Env(name="DATASOURCE_PASSWORD", value=constants.postgres_password),
             ],
-            resources=Resources(memory_request="4Gi", memory_limit="8Gi", cpu_limit="1"),
+            resources=Resources(memory_request=f"{constants.memory_request}Gi", memory_limit=f"{constants.memory_limit}Gi", cpu_limit=constants.cpu_limit),
             outputs=Artifact(
                 name=f"{quaque_container_name}-log",
                 path="/tmp/argo/outputs/logs/main.log"
@@ -183,7 +183,7 @@ class interface_servers:
                 Env(name="DATASOURCE_PASSWORD", value=constants.postgres_password),
                 Env(name="CONDENSED_MODE", value="false"),
             ],
-            resources=Resources(memory_request="4Gi", memory_limit="8Gi", cpu_limit="1"),
+            resources=Resources(memory_request=f"{constants.memory_request}Gi", memory_limit=f"{constants.memory_limit}Gi", cpu_limit=constants.cpu_limit),
             outputs=Artifact(
                 name=f"{quaque_flat_container_name}-log",
                 path="/tmp/argo/outputs/logs/main.log"

@@ -2,20 +2,6 @@ from hera.workflows import (
     script,
 )
 
-@script()
-def print_workflow_parameters(parameters: object):
-    import json
-
-    print("Printing workflow parameters:")
-    print("parameters: ", json.dumps(parameters, sort_keys=True))
-
-@script()
-def print_database_config(arguments: object):
-    import json
-
-    print("Printing instance arguments:")
-    print("arguments: ", json.dumps(arguments, sort_keys=True))
-
 def create_service_manifest(metadata_name: str, cleanup: str, selector_name:str, port: int, target_port: int) -> str:
     """
     Creates a Kubernetes service manifest.
@@ -43,6 +29,9 @@ def create_service_manifest(metadata_name: str, cleanup: str, selector_name:str,
             "   ports:\n"
             f"   - port: {port}\n"
             f"     targetPort: {target_port}\n")
+
+def create_cleanup_config(version: str, product: str, step: str) -> str:
+    return f"v-{version}-p-{product}-s-{step}"
 
 def create_volume_manifest(metadata_name: str, accessModes: str, storage: str) -> str:
     return ("apiVersion: v1\n"

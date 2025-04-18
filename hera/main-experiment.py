@@ -2,7 +2,6 @@ import experiment_layout
 from parse_arguments import parse_arguments
 from environment import environment
 from experiment_constants import constants
-from experiment_utils import print_workflow_parameters, print_database_config
 from databases import databases
 from servers import interface_servers
 from datasets import datasets, create_relational_dataset_importer, create_theoretical_dataset_importer
@@ -42,7 +41,7 @@ if __name__ == "__main__":
 
     with WorkflowTemplate(
         generate_name="converg-xp-",
-        entrypoint="converg-step",
+        entrypoint="converg-xp",
         tolerations=[Toleration(
             key="gpu", operator="Exists", effect="PreferNoSchedule")]
     ) as wt:
@@ -69,20 +68,9 @@ if __name__ == "__main__":
         # function building all services remover
         experiment_dbs.create_services_remover(dbs_configurations)
 
-        with DAG(name="converg-step"):
-            task_print_workflow_params = print_workflow_parameters(
-                name="workflow-params", arguments={"parameters": parameters})
-
+        with DAG(name="converg-xp"):
             for ds_configuration in dss_configurations:
                 # --------------------- Begin DS tasking --------------------- #
-                instance_args = {
-                    "version": ds_configuration.version,
-                    "product": ds_configuration.product,
-                    "step": ds_configuration.step
-                }
-                task_print_ds_inst = print_database_config(
-                    name=f'ds-config-{str(ds_configuration)}', arguments={"arguments": instance_args})
-
                 # init all the datasets volumes
                 volume_mount = environment.compute_dataset_volume_name(
                     ds_configuration)
@@ -106,7 +94,7 @@ if __name__ == "__main__":
                 # --------------------- End DS tasking --------------------- #
 
                 # --------------------- Begin BSBM workflow --------------------- #
-                task_print_workflow_params >> task_print_ds_inst >> task_volume >> task_dataset_generator >> [
+                task_volume >> task_dataset_generator >> [
                     task_relational_transformer, task_theoretical_transformer]
                 # --------------------- End BSBM workflow --------------------- #
 
@@ -117,20 +105,6 @@ if __name__ == "__main__":
                 associated_dbs_configurations = experiment_dbs.filter_dbs_configurations_by_ds_configuration(
                     dbs_configurations, ds_configuration)
                 for db_configuration in associated_dbs_configurations:
-                    instance_args = {
-                        "version": db_configuration.version,
-                        "product": db_configuration.product,
-                        "step": db_configuration.step,
-                        "postgres": constants.postgres,
-                        "blazegraph": constants.blazegraph,
-                        "quaque": constants.quaque,
-                        "quaque_flat": constants.quaque,
-                        "quader": constants.quader,
-                        "quader_flat": constants.quader,
-                    }
-                    task_print_db_inst = print_database_config(
-                        name=f'db-config-{str(db_configuration)}', arguments={"arguments": instance_args})
-
                     # init all the logging volumes
                     logging_volume_mount_name = environment.compute_logging_volume_name(
                         db_configuration)
@@ -261,7 +235,7 @@ if __name__ == "__main__":
                     # --------------------- End DB tasking --------------------- #
 
                     # --------------------- Begin DB workflow --------------------- #
-                    task_print_ds_inst >> task_print_db_inst >> task_logging_volume >> [
+                    task_logging_volume >> [
                         task_pg_flat_c,
                         task_pg_c,
                         task_bg_c

@@ -1,0 +1,42 @@
+
+services:
+  # Service PostgreSQL pour la base de données de Metabase
+  postgres_db_for_metabase:
+    image: postgres:latest
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: jeyuser
+      POSTGRES_DB: metabasedb # Nom de la base de données que Metabase utilisera
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Monte un volume nommé pour la persistance des données
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Décommentez la section 'ports' si vous avez besoin d'accéder à PostgreSQL depuis l'extérieur de Docker
+    ports:
+      - "5432:5432"
+
+  # Service Metabase
+  metabase_app:
+    image: metabase/metabase:latest # Utilise la dernière image officielle de Metabase
+    restart: unless-stopped
+    depends_on:
+      postgres_db_for_metabase:
+        condition: service_healthy # Attend que PostgreSQL soit prêt avant de démarrer Metabase
+    environment:
+      # Configuration pour que Metabase utilise la base de données PostgreSQL ci-dessus
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabasedb        # Doit correspondre à POSTGRES_DB
+      MB_DB_PORT: 5432
+      MB_DB_USER: jeyuser        
+      MB_DB_PASS: password
+      MB_DB_HOST: postgres_db_for_metabase
+    ports:
+      - "3000:3000" # Expose le port 3000 de Metabase sur le port 3000 de votre machine hôte
+
+volumes:
+    postgres_data:
+        driver: local

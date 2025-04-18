@@ -2,10 +2,7 @@ import experiment_layout
 from parse_arguments import parse_arguments
 from environment import environment
 from experiment_constants import constants
-from experiment_utils import print_workflow_parameters, print_database_config
-from databases import databases
-from servers import interface_servers
-from datasets import datasets, create_relational_dataset_importer, create_theoretical_dataset_importer
+from datasets import datasets
 from configuration import configuration
 from hera.workflows import (
     Task,
@@ -53,9 +50,6 @@ if __name__ == "__main__":
         with DAG(name="converg-ds-creator"):
             for ds_configuration in dss_configurations:
                 # --------------------- Begin DS tasking --------------------- #
-                task_print_ds_inst = print_database_config(
-                    name=f'ds-config-{str(ds_configuration)}', arguments={"arguments": ds_configuration.to_dict()})
-
                 # init all the datasets volumes
                 volume_mount = environment.compute_dataset_volume_name(
                     ds_configuration)
@@ -79,7 +73,7 @@ if __name__ == "__main__":
                 # --------------------- End DS tasking --------------------- #
 
                 # --------------------- Begin BSBM workflow --------------------- #
-                task_print_ds_inst >> task_volume >> task_dataset_generator >> [
+                task_volume >> task_dataset_generator >> [
                     task_relational_transformer, task_theoretical_transformer]
                 # --------------------- End BSBM workflow --------------------- #
 

@@ -19,25 +19,4 @@ def parse_arguments(logger=logging.getLogger(__name__)):
         type=str,
     )
 
-    experience_parser.parser.add(
-        "--versions",
-        help="List of versions to be used in the numerical experiment",
-        type=int,
-        nargs="+",
-    )
-
-    experience_parser.parser.add(
-        "--products",
-        help="List of BSBM products to be used in the numerical experiment",
-        type=int,
-        nargs="+",
-    )
-
-    experience_parser.parser.add(
-        "--steps",
-        help="List of BSBM products steps to be used in the numerical experiment",
-        type=int,
-        nargs="+",
-    )
-
     return experience_parser.parser.parse_args()
