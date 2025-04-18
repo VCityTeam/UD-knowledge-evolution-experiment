@@ -14,7 +14,7 @@ def print_workflow_parameters(parameters: object):
     import json
 
     print("Printing workflow parameters:")
-    print("parameters: ", json.dumps(parameters, sort_keys=True))
+    print("parameters: ", json.dumps(parameters))
 
 
 @script()

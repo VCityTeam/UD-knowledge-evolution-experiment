@@ -3,9 +3,10 @@ from environment import environment
 from hera.workflows import (
     DAG,
     WorkflowTemplate,
-    script
+    script,
+    Task
 )
-from hera.workflows.models import Toleration, Arguments, Parameter
+from hera.workflows.models import Toleration, Arguments, Parameter, TemplateRef
 
 
 @script(inputs=[Parameter(name="ds_config"), Parameter(name="dbs_config")])
@@ -34,12 +35,21 @@ if __name__ == "__main__":
     ) as wt:
         with DAG(name="ds-dbs-step",
                  inputs=[Parameter(name="ds_config"), Parameter(name="dbs_config")]) as dag:
-            task_print_workflow_params = print_ds_dbs_configs(
+            task_print_ds_dbs_params = print_ds_dbs_configs(
                 arguments={
                     "ds_config": dag.get_parameter("ds_config"),
                     "dbs_config": dag.get_parameter("dbs_config")
                 })
+            
+            task_ds = Task(
+                name="ds-instance",
+                template_ref=TemplateRef(
+                    name="ds-xp", template="ds-step"),
+                arguments=Arguments(
+                    parameters=[dag.get_parameter("ds_config")],
+                ),
+            )
 
-            task_print_workflow_params
+            task_print_ds_dbs_params >> task_ds
 
         wt.create()
