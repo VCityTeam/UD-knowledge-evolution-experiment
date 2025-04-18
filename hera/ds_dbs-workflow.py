@@ -40,7 +40,7 @@ if __name__ == "__main__":
                     "ds_config": dag.get_parameter("ds_config"),
                     "dbs_config": dag.get_parameter("dbs_config")
                 })
-            
+
             task_ds = Task(
                 name="ds-instance",
                 template_ref=TemplateRef(
@@ -50,6 +50,18 @@ if __name__ == "__main__":
                 ),
             )
 
-            task_print_ds_dbs_params >> task_ds
+            task_dbs = Task(
+                name="db-loop",
+                template_ref=TemplateRef(
+                    name="db-xp", template="db-step"),
+                arguments=Arguments(
+                    parameters=[
+                        dag.get_parameter("ds_config"),
+                        Parameter(name="db_config", value="{{item}}")]
+                ),
+                with_param=dag.get_parameter("dbs_config")
+            )
+
+            task_print_ds_dbs_params >> [task_ds, task_dbs]
 
         wt.create()
