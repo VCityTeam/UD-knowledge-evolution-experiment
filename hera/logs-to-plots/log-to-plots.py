@@ -79,11 +79,11 @@ def whisker_duration_per_component_query_config(data, limit=None):
         fig, ax = plt.subplots(figsize=(12, 6))
 
         # Get unique components and their corresponding durations for the boxplot
-        components = group['COMPONENT'].unique()
+        components = sorted(group['COMPONENT'].unique(), key=lambda x: (x.startswith('blazegraph'), x.startswith('quaque-flat'), x.startswith('quaque-condensed')), reverse=True)
         data_to_plot = [group[group['COMPONENT'] == comp]['DURATION (ms)'] for comp in components]
 
         # Create the boxplot
-        bp = ax.boxplot(data_to_plot, patch_artist=True, labels=components) # Added labels
+        bp = ax.boxplot(data_to_plot, patch_artist=True, tick_labels=components) # Added labels
 
         # Add colors to boxes for better distinction
         colors = plt.cm.viridis_r(np.linspace(0, 1, len(components)))
@@ -159,6 +159,8 @@ def create_version_ratio_plot(data, limit=None):
         # --- Step 6: Generate plots ---
         for (step, product, query), components in config_to_components.items():
             fig, ax = plt.subplots(figsize=(12, 6))
+            
+            components = sorted(components, key=lambda x: (x.startswith('blazegraph'), x.startswith('quaque-flat'), x.startswith('quaque-condensed')), reverse=True)
 
             # Filter data for the current configuration
             for component in components:
@@ -190,58 +192,6 @@ def create_version_ratio_plot(data, limit=None):
             plt.savefig(filepath, dpi=300)
             plt.close(fig)
 
-    
-def duration_per_component_query_config(data, limit=None):
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    import os
-    
-    grouping_cols = ['VERSION', 'PRODUCT', 'STEP', 'QUERY']
-    df = pd.DataFrame(data)
-    if limit is not None:
-        df = df[df['TRY'] >= limit]
-    output_dir = 'plots/duration'
-    os.makedirs(output_dir, exist_ok=True)
-    grouped_data = df.groupby(grouping_cols)
-    print(f"Found {len(grouped_data)} groups based on {grouping_cols}.")
-    for name, group in grouped_data:
-        # Extract group keys
-        version, product, step, query = name
-        grouped_output_dir = f"{output_dir}/v-{version}-p{product}-s{step}"
-        os.makedirs(grouped_output_dir, exist_ok=True)
-
-        try:
-            pivot_df = group.pivot_table(index='TRY', columns='COMPONENT', values='DURATION (ms)')
-        except Exception as e:
-            print(f"Could not pivot data for group {name}: {e}")
-            continue # Skip this group if pivoting fails
-
-        if pivot_df.empty:
-            print(f"Skipping empty pivot table for group {name}")
-            continue
-
-        # Create plot
-        fig, ax = plt.subplots(figsize=(21, 7))
-
-        pivot_df.plot(kind='bar', ax=ax)
-
-        # Set title and labels
-        plot_title = (
-            f"Duration vs. Try · Version: {version}, Product: {product}, Step: {step}, Query: {query}"
-        )
-        ax.set_title(plot_title)
-        ax.set_xlabel("Shot Number")
-        ax.set_ylabel("Duration (ms)")
-        ax.grid(True, which='both', linestyle='--', linewidth=0.5) # Add grid
-        ax.legend(title='Component',  loc='upper left')
-
-        # --- Create a safe filename for the plot ---
-        safe_query = sanitize_filename(query)
-        filepath = os.path.join(grouped_output_dir, f"duration_{safe_query}.png")
-        
-        plt.savefig(filepath, dpi=300)
-        plt.close(fig)
-
 def sanitize_filename(name):
     """Removes or replaces characters invalid for filenames."""
     # Remove invalid characters
@@ -266,4 +216,3 @@ if __name__ == "__main__":
 
     whisker_duration_per_component_query_config(log_data, limit=50)
     create_version_ratio_plot(log_data, limit=50)
-    duration_per_component_query_config(log_data, limit=50)
