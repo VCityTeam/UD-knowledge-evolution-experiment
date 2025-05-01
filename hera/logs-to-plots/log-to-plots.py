@@ -86,9 +86,13 @@ def whisker_duration_per_component_query_config(data, limit=None):
         bp = ax.boxplot(data_to_plot, patch_artist=True, tick_labels=components) # Added labels
 
         # Add colors to boxes for better distinction
-        colors = plt.cm.viridis_r(np.linspace(0, 1, len(components)))
-        for patch, color in zip(bp['boxes'], colors):
-            patch.set_facecolor(color)
+        for patch, comp in zip(bp['boxes'], components):
+            if comp.startswith('blazegraph'):
+                patch.set_facecolor('blue')
+            elif comp.startswith('quaque-flat'):
+                patch.set_facecolor('orange')
+            else:
+                patch.set_facecolor('green')
 
         # Add median lines color
         for median in bp['medians']:
@@ -171,8 +175,15 @@ def create_version_ratio_plot(data, limit=None):
                 config_filter = (results_df[config_cols] == pd.Series(config, index=config_cols)).all(axis=1)
                 plot_data = results_df[config_filter].sort_values(by='VERSION')
 
-                # Create plot
-                ax.plot(plot_data['VERSION'], plot_data['RATIO'], marker='o', linestyle='-', label=component)
+                # Assign color based on component name
+                if component.startswith('blazegraph'):
+                    color = 'blue'
+                elif component.startswith('quaque-flat'):
+                    color = 'orange'
+                else:
+                    color = 'green'
+
+                ax.plot(plot_data['VERSION'], plot_data['RATIO'], marker='o', linestyle='-', label=component, color=color)
 
             # Set title and labels
             # Create a multi-line title for better readability
