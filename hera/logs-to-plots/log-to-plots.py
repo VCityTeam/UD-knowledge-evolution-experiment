@@ -1,6 +1,7 @@
 import re
 import os
 
+
 def get_component_name(component: str):
     """
     Extracts the component name from a given string.
@@ -17,6 +18,7 @@ def get_component_name(component: str):
         component_parts.append(part)
 
     return '-'.join(component_parts)
+
 
 def extract_log_info(log_file_path: str):
     # Définir une expression régulière pour correspondre au format du log
@@ -55,12 +57,13 @@ def extract_log_info(log_file_path: str):
 
     return extracted_data
 
+
 def whisker_duration_per_component_query_config(data, limit=None):
     import pandas as pd
     import matplotlib.pyplot as plt
     import os
     import numpy as np
-    
+
     grouping_cols = ['VERSION', 'PRODUCT', 'STEP', 'QUERY']
     df = pd.DataFrame(data)
     if limit is not None:
@@ -79,11 +82,14 @@ def whisker_duration_per_component_query_config(data, limit=None):
         fig, ax = plt.subplots(figsize=(12, 6))
 
         # Get unique components and their corresponding durations for the boxplot
-        components = sorted(group['COMPONENT'].unique(), key=lambda x: (x.startswith('blazegraph'), x.startswith('quaque-flat'), x.startswith('quaque-condensed')), reverse=True)
-        data_to_plot = [group[group['COMPONENT'] == comp]['DURATION (ms)'] for comp in components]
+        components = sorted(group['COMPONENT'].unique(), key=lambda x: (x.startswith(
+            'blazegraph'), x.startswith('quaque-flat'), x.startswith('quaque-condensed')), reverse=True)
+        data_to_plot = [group[group['COMPONENT'] == comp]
+                        ['DURATION (ms)'] for comp in components]
 
         # Create the boxplot
-        bp = ax.boxplot(data_to_plot, patch_artist=True, tick_labels=components) # Added labels
+        bp = ax.boxplot(data_to_plot, patch_artist=True,
+                        tick_labels=components)  # Added labels
 
         # Add colors to boxes for better distinction
         for patch, comp in zip(bp['boxes'], components):
@@ -99,19 +105,22 @@ def whisker_duration_per_component_query_config(data, limit=None):
             median.set(color='red', linewidth=2)
 
         # Improve layout and labels
-        ax.set_title(f'Duration Distribution\nVersion={version}, Product={product}, Step={step}, Query={query}')
+        ax.set_title(
+            f'Duration Distribution\nVersion={version}, Product={product}, Step={step}, Query={query}')
         ax.set_ylabel('Duration (ms)')
         ax.set_xlabel('Component')
         # ax.tick_params(axis='x', rotation=45) # Rotate x-axis labels if they overlap
-        ax.grid(True, linestyle='--', alpha=0.6) # Add grid lines
-        
+        ax.grid(True, linestyle='--', alpha=0.6)  # Add grid lines
+
         # --- Create a safe filename for the plot ---
         safe_query = sanitize_filename(query)
-        filepath = os.path.join(grouped_output_dir, f"whisker_duration_{safe_query}.png")
-       
+        filepath = os.path.join(
+            grouped_output_dir, f"whisker_duration_{safe_query}.png")
+
         plt.savefig(filepath, dpi=300)
         plt.close(fig)
-        
+
+
 def create_version_ratio_plot(data, limit=None):
     import pandas as pd
     import matplotlib.pyplot as plt
@@ -128,18 +137,23 @@ def create_version_ratio_plot(data, limit=None):
     config_cols = ['STEP', 'PRODUCT', 'QUERY', 'COMPONENT_NAME']
 
     # --- Step 1: Calculate total duration for each version within each configuration ---
-    duration_per_version = df.groupby(config_cols + ['VERSION'])['DURATION (ms)'].sum().reset_index()
+    duration_per_version = df.groupby(
+        config_cols + ['VERSION'])['DURATION (ms)'].sum().reset_index()
 
     # --- Step 2: Calculate total duration for each configuration (across all versions) ---
-    total_duration_per_config = df.groupby(config_cols)['DURATION (ms)'].sum().reset_index()
-    total_duration_per_config.rename(columns={'DURATION (ms)': 'TOTAL_DURATION_CONFIG'}, inplace=True)
+    total_duration_per_config = df.groupby(
+        config_cols)['DURATION (ms)'].sum().reset_index()
+    total_duration_per_config.rename(
+        columns={'DURATION (ms)': 'TOTAL_DURATION_CONFIG'}, inplace=True)
 
     # --- Step 3: Merge the two results to calculate the ratio ---
-    results_df = pd.merge(duration_per_version, total_duration_per_config, on=config_cols)
+    results_df = pd.merge(duration_per_version,
+                          total_duration_per_config, on=config_cols)
 
     # --- Step 4: Calculate the ratio ---
     results_df['RATIO'] = results_df.apply(
-        lambda row: row['DURATION (ms)'] / row['TOTAL_DURATION_CONFIG'] if row['TOTAL_DURATION_CONFIG'] > 0 else 0,
+        lambda row: row['DURATION (ms)'] /
+        row['TOTAL_DURATION_CONFIG'] if row['TOTAL_DURATION_CONFIG'] > 0 else 0,
         axis=1
     )
 
@@ -147,7 +161,8 @@ def create_version_ratio_plot(data, limit=None):
     # Get unique configurations
     unique_configs = results_df[config_cols].drop_duplicates().values.tolist()
     num_unique_configs = len(unique_configs)
-    print(f"Found {num_unique_configs} unique configurations based on {config_cols}.")
+    print(
+        f"Found {num_unique_configs} unique configurations based on {config_cols}.")
 
     if num_unique_configs == 0:
         print("No data or configurations found to plot.")
@@ -158,13 +173,19 @@ def create_version_ratio_plot(data, limit=None):
             step, product, query, component = config
             if (step, product, query) not in config_to_components:
                 config_to_components[(step, product, query)] = []
-            config_to_components[(step, product, query)].append(component)     
-        
+            config_to_components[(step, product, query)].append(component)
+
         # --- Step 6: Generate plots ---
         for (step, product, query), components in config_to_components.items():
             fig, ax = plt.subplots(figsize=(12, 6))
-            
-            components = sorted(components, key=lambda x: (x.startswith('blazegraph'), x.startswith('quaque-flat'), x.startswith('quaque-condensed')), reverse=True)
+
+            components = sorted(
+                components,
+                key=lambda x:
+                    (x.startswith('blazegraph'), x.startswith(
+                        'quaque-flat'), x.startswith('quaque-condensed')),
+                    reverse=True
+            )
 
             # Filter data for the current configuration
             for component in components:
@@ -172,7 +193,8 @@ def create_version_ratio_plot(data, limit=None):
                 config_cols = ['STEP', 'PRODUCT', 'QUERY', 'COMPONENT_NAME']
                 # Create a tuple for the current configuration
                 config = [step, product, query, component]
-                config_filter = (results_df[config_cols] == pd.Series(config, index=config_cols)).all(axis=1)
+                config_filter = (results_df[config_cols] == pd.Series(
+                    config, index=config_cols)).all(axis=1)
                 plot_data = results_df[config_filter].sort_values(by='VERSION')
 
                 # Assign color based on component name
@@ -183,7 +205,8 @@ def create_version_ratio_plot(data, limit=None):
                 else:
                     color = 'green'
 
-                ax.plot(plot_data['VERSION'], plot_data['RATIO'], marker='o', linestyle='-', label=component, color=color)
+                ax.plot(plot_data['VERSION'], plot_data['RATIO'],
+                        marker='o', linestyle='-', label=component, color=color)
 
             # Set title and labels
             # Create a multi-line title for better readability
@@ -192,8 +215,9 @@ def create_version_ratio_plot(data, limit=None):
             ax.set_xlabel("Version")
             ax.set_ylabel("Time Ratio")
             ax.grid(True)
-            ax.legend(title='Component', loc='upper left')  # Add legend to the plot
-            
+            # Add legend to the plot
+            ax.legend(title='Component', loc='upper left')
+
             # Ensure x-axis ticks are integers if versions are integers
             ax.xaxis.get_major_locator().set_params(integer=True)
 
@@ -203,17 +227,18 @@ def create_version_ratio_plot(data, limit=None):
             plt.savefig(filepath, dpi=300)
             plt.close(fig)
 
-def sanitize_filename(name):
+
+def sanitize_filename(name, max_len=100):
     """Removes or replaces characters invalid for filenames."""
     # Remove invalid characters
     name = re.sub(r'[<>:"/\\|?*]', '_', str(name))
     # Replace spaces with underscores
     name = name.replace(' ', '_')
     # Limit length if necessary (optional)
-    max_len = 100
     if len(name) > max_len:
         name = name[:max_len]
     return name
+
 
 if __name__ == "__main__":
     # Afficher les informations extraites
