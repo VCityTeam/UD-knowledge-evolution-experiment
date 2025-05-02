@@ -228,6 +228,166 @@ def create_version_ratio_plot(data, limit=None):
             plt.close(fig)
 
 
+def create_version_normalized_duration_plot(data, limit=None):
+    """
+    Generates plots showing normalized execution time per version for configurations.
+
+    Each plot corresponds to a (STEP, PRODUCT, QUERY) combination and shows
+    lines for different COMPONENT_NAMEs. The y-axis represents the duration
+    of a specific version divided by the duration of the lowest version number
+    found within that specific (STEP, PRODUCT, QUERY, COMPONENT_NAME) group.
+
+    Args:
+        data (list or similar): Input data convertible to a pandas DataFrame.
+                                 Expected columns: 'STEP', 'PRODUCT', 'QUERY',
+                                 'COMPONENT_NAME', 'VERSION', 'DURATION (ms)', 'TRY'.
+        limit (int, optional): If provided, only include rows where 'TRY' >= limit.
+                               Defaults to None.
+    """
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import os  # Import os module
+
+    # --- Data Loading and Initial Filtering ---
+    df = pd.DataFrame(data)
+    if limit is not None:
+        df = df[df['TRY'] >= limit]
+
+    # Ensure essential columns exist
+    config_cols = ['STEP', 'PRODUCT', 'QUERY', 'COMPONENT_NAME']
+    required_cols = config_cols + ['VERSION', 'DURATION (ms)']
+    if not all(col in df.columns for col in required_cols):
+        missing = [col for col in required_cols if col not in df.columns]
+        print(f"Error: Missing required columns: {missing}")
+        return  # Exit if essential columns are missing
+
+    output_dir = 'plots/normalized_duration'  # Changed output directory name
+    os.makedirs(output_dir, exist_ok=True)
+
+    # --- Step 1: Calculate sum of durations for each version within each config ---
+    duration_per_version = df.groupby(
+        config_cols + ['VERSION']
+    )['DURATION (ms)'].sum().reset_index()
+    duration_per_version.rename(
+        columns={'DURATION (ms)': 'SUM_DURATION_MS'}, inplace=True)
+
+    if duration_per_version.empty:
+        print("No data remaining after grouping. Cannot generate plots.")
+        return
+
+    # --- Step 2: Find the duration of the lowest version for each config ---
+    # Get the index of the row with the minimum version for each group
+    min_version_indices = duration_per_version.loc[duration_per_version.groupby(
+        config_cols)['VERSION'].idxmin()]
+    # Select relevant columns and rename the duration column to represent the normalization factor
+    normalization_factors = min_version_indices[config_cols + [
+        'SUM_DURATION_MS']].copy()
+    normalization_factors.rename(
+        columns={'SUM_DURATION_MS': 'LOWEST_VERSION_DURATION'}, inplace=True)
+
+    # --- Step 3: Merge normalization factor back to the main data ---
+    results_df = pd.merge(duration_per_version,
+                          normalization_factors, on=config_cols, how='left')
+
+    # --- Step 4: Calculate the Normalized Duration ---
+    results_df['NORMALIZED_DURATION'] = results_df.apply(
+        lambda row: row['SUM_DURATION_MS'] / row['LOWEST_VERSION_DURATION']
+        if pd.notna(row['LOWEST_VERSION_DURATION']) and row['LOWEST_VERSION_DURATION'] > 0
+        else 0,  # Handle cases where merge failed or duration is 0
+        axis=1
+    )
+
+    # --- Step 5: Prepare for plotting (Group by Step, Product, Query) ---
+    unique_configs_for_plotting = results_df[[
+        'STEP', 'PRODUCT', 'QUERY']].drop_duplicates().values.tolist()
+    num_plot_configs = len(unique_configs_for_plotting)
+    print(
+        f"Found {num_plot_configs} unique (STEP, PRODUCT, QUERY) combinations for plotting.")
+
+    if num_plot_configs == 0:
+        print("No configurations found to plot.")
+    else:
+        # --- Step 6: Generate plots ---
+        for plot_config in unique_configs_for_plotting:
+            step, product, query = plot_config
+            fig, ax = plt.subplots(figsize=(12, 6))
+
+            # Filter results_df for the current Step, Product, Query
+            plot_group_data = results_df[
+                (results_df['STEP'] == step) &
+                (results_df['PRODUCT'] == product) &
+                (results_df['QUERY'] == query)
+            ].copy()
+
+            # Get components for this group and sort them for consistent plotting order
+            components = sorted(
+                plot_group_data['COMPONENT_NAME'].unique(),
+                key=lambda x:
+                (not x.startswith('blazegraph'), not x.startswith(
+                    'quaque-flat'), not x.startswith('quaque-condensed'))
+            )
+
+            # Plot data for each component in the current group
+            for component in components:
+                # Filter the group data for the current component
+                component_data = plot_group_data[plot_group_data['COMPONENT_NAME'] == component].sort_values(
+                    by='VERSION')
+
+                if component_data.empty:
+                    continue  # Skip if no data for this component in the group
+
+                # Assign color based on component name (same logic as before)
+                if component.startswith('blazegraph'):
+                    color = 'blue'
+                elif component.startswith('quaque-flat'):
+                    color = 'orange'
+                # Added condition for condensed
+                elif component.startswith('quaque-condensed'):
+                    color = 'green'
+                else:  # Default color for other components
+                    color = 'red'
+
+                # Plot NORMALIZED_DURATION vs VERSION
+                ax.plot(component_data['VERSION'], component_data['NORMALIZED_DURATION'],
+                        marker='o', linestyle='-', label=component, color=color)
+
+            # --- Plot Customization ---
+            title_str = f"Step: {step}, Product: {product}\nQuery: {query}"
+            ax.set_title(title_str, fontsize=11)  # Adjusted font size slightly
+            ax.set_xlabel("Version")
+            # Updated Y-axis label
+            ax.set_ylabel(
+                "Normalized Duration (Time / Time of Lowest Version)")
+            ax.grid(True)
+
+            # Add legend only if there are labels to show
+            if ax.get_legend_handles_labels()[0]:
+                # Changed location to 'best'
+                ax.legend(title='Component', loc='best')
+
+            # Ensure x-axis ticks are integers
+            try:  # Added try-except for robustness
+                ax.xaxis.get_major_locator().set_params(integer=True)
+            except AttributeError:
+                print(
+                    f"Warning: Could not set integer ticks for x-axis on plot: {title_str}")
+
+            # Set y-axis minimum to 0 for better interpretation, maybe add some padding
+            ax.set_ylim(bottom=0)
+
+            # --- Saving the plot ---
+            # Define subdirectory
+            step_prod_dir = f"{output_dir}/{step}_{product}"
+            # Create subdirectory if needed
+            os.makedirs(step_prod_dir, exist_ok=True)
+            # Sanitize query part of filename (replace non-alphanumeric with underscore)
+            safe_query = "".join(c if c.isalnum() else "_" for c in str(query))
+            filepath = f"{step_prod_dir}/normalized_duration_{safe_query}.png"
+
+            plt.savefig(filepath, dpi=300)  # Use bbox_inches
+            plt.close(fig)  # Close figure to free memory
+
+
 def sanitize_filename(name, max_len=100):
     """Removes or replaces characters invalid for filenames."""
     # Remove invalid characters
@@ -251,4 +411,5 @@ if __name__ == "__main__":
     log_data = extract_log_info(log_file_path)
 
     whisker_duration_per_component_query_config(log_data, limit=50)
+    create_version_normalized_duration_plot(log_data, limit=50)
     create_version_ratio_plot(log_data, limit=50)
