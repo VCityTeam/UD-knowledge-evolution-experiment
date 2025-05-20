@@ -20,7 +20,7 @@ def get_component_name(component: str):
     return '-'.join(component_parts)
 
 
-def extract_log_info(log_file_path: str):
+def extract_log_info(log_file_path: str, repeat=200):
     # Définir une expression régulière pour correspondre au format du log
     log_pattern = r'\{"component":"(?P<component>[^"]+)","query":"(?P<query>[^"]+)","try":"(?P<try>[^"]+)","duration":"(?P<duration>[^"]+)","version":"(?P<version>[^"]+)","product":"(?P<product>[^"]+)","step":"(?P<step>[^"]+)","time":"(?P<time>[^"]+)"\}'
     extracted_data = []
@@ -54,15 +54,84 @@ def extract_log_info(log_file_path: str):
                     "TIME": time_unix,
                     "COMPONENT_NAME": get_component_name(component)
                 })
+                
+    extracted_data = remove_all_with_less_than_repeat(data=extracted_data, repeat=repeat)
+    extracted_data = remove_all_with_less_than_count_version(data=extracted_data, count=4)
+    extracted_data = remove_all_with_less_than_count_component(data=extracted_data, count=3)
 
     return extracted_data
 
+def remove_all_with_less_than_repeat(data, repeat=200):
+    """
+    Group by VERSION, PRODUCT, STEP, QUERY and
+    remove all entries from data when the max TRY is less than repeat
+    """
+    import pandas as pd
+    df = pd.DataFrame(data)
+    
+    max_lower_than_repeat = []
+    for name, group in df.groupby(['VERSION', 'PRODUCT', 'STEP', 'QUERY']):
+        max_try = group['TRY'].max()
+        if max_try < repeat:
+            max_lower_than_repeat.append(name)
+            
+    # Remove all entries from data have the same VERSION, PRODUCT, STEP, QUERY in max_lower_than_repeat
+    for name in max_lower_than_repeat:
+        version, product, step, query = name
+        df = df[~((df['VERSION'] == version) & (df['PRODUCT'] == product) & (df['STEP'] == step) & (df['QUERY'] == query))]        
+    
+    return df.to_dict(orient='records')
+
+def remove_all_with_less_than_count_version(data, count=4):
+    """
+    Group by PRODUCT, STEP, QUERY, COMPONENT and
+    remove all entries from data when the count of version is less than count
+    """
+    import pandas as pd
+    df = pd.DataFrame(data)
+    
+    # Count the number of unique versions for each group
+    version_counts = df.groupby(['PRODUCT', 'STEP', 'QUERY', 'COMPONENT_NAME'])['VERSION'].nunique().reset_index()
+    version_counts.rename(columns={'VERSION': 'COUNT_VERSION'}, inplace=True)
+
+    # Filter groups with less than count unique versions
+    groups_to_remove = version_counts[version_counts['COUNT_VERSION'] < count]
+
+    # Remove all entries from data have the same PRODUCT, STEP, QUERY in groups_to_remove
+    for _, row in groups_to_remove.iterrows():
+        product, step, query, _, _ = row
+        df = df[~((df['PRODUCT'] == product) & (df['STEP'] == step) & (df['QUERY'] == query))]        
+    
+    return df.to_dict(orient='records')
+
+def remove_all_with_less_than_count_component(data, count=3):
+    """
+    Group by PRODUCT, STEP, QUERY, VERSION and
+    remove all entries from data when the count of component is less than count
+    """
+    import pandas as pd
+    df = pd.DataFrame(data)
+    
+    # Count the number of unique components for each group
+    component_counts = df.groupby(['PRODUCT', 'STEP', 'QUERY', 'VERSION'])['COMPONENT_NAME'].nunique().reset_index()
+    component_counts.rename(columns={'COMPONENT_NAME': 'COUNT_COMPONENT'}, inplace=True)
+
+    # Filter groups with less than count unique components
+    groups_to_remove = component_counts[component_counts['COUNT_COMPONENT'] < count]
+
+    # Remove all entries from data have the same PRODUCT, STEP, QUERY in groups_to_remove
+    for _, row in groups_to_remove.iterrows():
+        product, step, query, version, _ = row
+        df = df[~((df['PRODUCT'] == product) & (df['STEP'] == step) & (df['QUERY'] == query) & (df['VERSION'] == version))]
+
+    return df.to_dict(orient='records')
 
 def whisker_duration_per_component_query_config(data, limit=None):
     import pandas as pd
     import matplotlib.pyplot as plt
     import os
-    import numpy as np
+    
+    print("Starting to create boxplots for duration per component and query configuration.")
 
     grouping_cols = ['VERSION', 'PRODUCT', 'STEP', 'QUERY']
     df = pd.DataFrame(data)
@@ -121,45 +190,32 @@ def whisker_duration_per_component_query_config(data, limit=None):
         plt.close(fig)
 
 
-def create_version_ratio_plot(data, limit=None):
+def create_duration_average_plot(data, limit=None):
     import pandas as pd
     import matplotlib.pyplot as plt
+    
+    print("Starting to create average duration plots.")
 
     # Read the uploaded JSON file into a pandas DataFrame
     # Use the file handle provided by the environment
     df = pd.DataFrame(data)
     if limit is not None:
         df = df[df['TRY'] >= limit]
-    output_dir = 'plots/ratio'
+    output_dir = 'plots/average_duration'
     os.makedirs(output_dir, exist_ok=True)
 
     # Define the columns that identify a unique configuration
     config_cols = ['STEP', 'PRODUCT', 'QUERY', 'COMPONENT_NAME']
 
-    # --- Step 1: Calculate total duration for each version within each configuration ---
-    duration_per_version = df.groupby(
-        config_cols + ['VERSION'])['DURATION (ms)'].sum().reset_index()
+    # --- Step 1: Calculate mean duration for each version within each configuration ---
+    mean_duration_per_version = df.groupby(
+        config_cols + ['VERSION'])['DURATION (ms)'].mean().reset_index()
+    mean_duration_per_version.rename(
+        columns={'DURATION (ms)': 'MEAN_DURATION_CONFIG'}, inplace=True)
 
-    # --- Step 2: Calculate total duration for each configuration (across all versions) ---
-    total_duration_per_config = df.groupby(
-        config_cols)['DURATION (ms)'].sum().reset_index()
-    total_duration_per_config.rename(
-        columns={'DURATION (ms)': 'TOTAL_DURATION_CONFIG'}, inplace=True)
-
-    # --- Step 3: Merge the two results to calculate the ratio ---
-    results_df = pd.merge(duration_per_version,
-                          total_duration_per_config, on=config_cols)
-
-    # --- Step 4: Calculate the ratio ---
-    results_df['RATIO'] = results_df.apply(
-        lambda row: row['DURATION (ms)'] /
-        row['TOTAL_DURATION_CONFIG'] if row['TOTAL_DURATION_CONFIG'] > 0 else 0,
-        axis=1
-    )
-
-    # --- Step 5: Prepare for plotting ---
+    # --- Step 2: Prepare for plotting ---
     # Get unique configurations
-    unique_configs = results_df[config_cols].drop_duplicates().values.tolist()
+    unique_configs = mean_duration_per_version[config_cols].drop_duplicates().values.tolist()
     num_unique_configs = len(unique_configs)
     print(
         f"Found {num_unique_configs} unique configurations based on {config_cols}.")
@@ -175,7 +231,7 @@ def create_version_ratio_plot(data, limit=None):
                 config_to_components[(step, product, query)] = []
             config_to_components[(step, product, query)].append(component)
 
-        # --- Step 6: Generate plots ---
+        # --- Step 3: Generate plots ---
         for (step, product, query), components in config_to_components.items():
             fig, ax = plt.subplots(figsize=(12, 6))
 
@@ -193,9 +249,9 @@ def create_version_ratio_plot(data, limit=None):
                 config_cols = ['STEP', 'PRODUCT', 'QUERY', 'COMPONENT_NAME']
                 # Create a tuple for the current configuration
                 config = [step, product, query, component]
-                config_filter = (results_df[config_cols] == pd.Series(
+                config_filter = (mean_duration_per_version[config_cols] == pd.Series(
                     config, index=config_cols)).all(axis=1)
-                plot_data = results_df[config_filter].sort_values(by='VERSION')
+                plot_data = mean_duration_per_version[config_filter].sort_values(by='VERSION')
 
                 # Assign color based on component name
                 if component.startswith('blazegraph'):
@@ -205,7 +261,7 @@ def create_version_ratio_plot(data, limit=None):
                 else:
                     color = 'green'
 
-                ax.plot(plot_data['VERSION'], plot_data['RATIO'],
+                ax.plot(plot_data['VERSION'], plot_data['MEAN_DURATION_CONFIG'],
                         marker='o', linestyle='-', label=component, color=color)
 
             # Set title and labels
@@ -213,7 +269,7 @@ def create_version_ratio_plot(data, limit=None):
             title_str = f"Step: {step}, Prod: {product}\nQuery: {query}"
             ax.set_title(title_str, fontsize=9)
             ax.set_xlabel("Version")
-            ax.set_ylabel("Time Ratio")
+            ax.set_ylabel("Mean Duration (ms)")
             ax.grid(True)
             # Add legend to the plot
             ax.legend(title='Component', loc='upper left')
@@ -223,7 +279,7 @@ def create_version_ratio_plot(data, limit=None):
 
             # --- Create a safe filename for the plot ---
             os.makedirs(f"{output_dir}/{step}_{product}", exist_ok=True)
-            filepath = f"{output_dir}/{step}_{product}/duration_ratio_{query}.png"
+            filepath = f"{output_dir}/{step}_{product}/duration_average_{query}.png"
             plt.savefig(filepath, dpi=300)
             plt.close(fig)
 
@@ -247,6 +303,8 @@ def create_version_normalized_duration_plot(data, limit=None):
     import pandas as pd
     import matplotlib.pyplot as plt
     import os  # Import os module
+    
+    print("Starting to create version normalized duration plots.")
 
     # --- Data Loading and Initial Filtering ---
     df = pd.DataFrame(data)
@@ -410,6 +468,6 @@ if __name__ == "__main__":
 
     log_data = extract_log_info(log_file_path)
 
-    whisker_duration_per_component_query_config(log_data, limit=50)
-    create_version_normalized_duration_plot(log_data, limit=50)
-    create_version_ratio_plot(log_data, limit=50)
+    whisker_duration_per_component_query_config(data=log_data, limit=50)
+    create_version_normalized_duration_plot(data=log_data, limit=50)
+    create_duration_average_plot(data=log_data, limit=50)
