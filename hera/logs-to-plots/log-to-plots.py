@@ -126,11 +126,11 @@ def remove_all_with_less_than_count_component(data, count=3):
 
     return df.to_dict(orient='records')
 
-def whisker_duration_per_component_query_config(data, limit=None):
+def whisker_duration_per_component_query_config(data, scale="linear", limit=None):
     import pandas as pd
     import matplotlib.pyplot as plt
     import os
-    
+
     print("Starting to create boxplots for duration per component and query configuration.")
 
     grouping_cols = ['VERSION', 'PRODUCT', 'STEP', 'QUERY']
@@ -145,7 +145,7 @@ def whisker_duration_per_component_query_config(data, limit=None):
     for name, group in grouped_data:
         # Extract group keys
         version, product, step, query = name
-        grouped_output_dir = f"{output_dir}/v-{version}-p{product}-s{step}"
+        grouped_output_dir = f"{output_dir}/{scale}/v-{version}-p{product}-s{step}"
         os.makedirs(grouped_output_dir, exist_ok=True)
 
         fig, ax = plt.subplots(figsize=(12, 6))
@@ -178,6 +178,12 @@ def whisker_duration_per_component_query_config(data, limit=None):
             f'Duration Distribution\nVersion={version}, Product={product}, Step={step}, Query={query}')
         ax.set_ylabel('Duration (ms)')
         ax.set_xlabel('Component')
+
+        # Set y-axis scale if requested
+        if scale == "log":
+            ax.set_yscale("log")
+            ax.set_ylabel('Duration Log(ms)')
+
         # ax.tick_params(axis='x', rotation=45) # Rotate x-axis labels if they overlap
         ax.grid(True, linestyle='--', alpha=0.6)  # Add grid lines
 
@@ -190,7 +196,7 @@ def whisker_duration_per_component_query_config(data, limit=None):
         plt.close(fig)
 
 
-def create_duration_average_plot(data, limit=None):
+def create_duration_average_plot(data, scale="linear", limit=None):
     import pandas as pd
     import matplotlib.pyplot as plt
     
@@ -201,7 +207,7 @@ def create_duration_average_plot(data, limit=None):
     df = pd.DataFrame(data)
     if limit is not None:
         df = df[df['TRY'] >= limit]
-    output_dir = 'plots/average_duration'
+    output_dir = f'plots/average_duration/{scale}'
     os.makedirs(output_dir, exist_ok=True)
 
     # Define the columns that identify a unique configuration
@@ -270,6 +276,10 @@ def create_duration_average_plot(data, limit=None):
             ax.set_title(title_str, fontsize=9)
             ax.set_xlabel("Version")
             ax.set_ylabel("Mean Duration (ms)")
+            if scale == "log":
+                ax.set_yscale("log")
+                ax.set_ylabel("Mean Duration Log(ms)")
+
             ax.grid(True)
             # Add legend to the plot
             ax.legend(title='Component', loc='upper left')
@@ -468,6 +478,8 @@ if __name__ == "__main__":
 
     log_data = extract_log_info(log_file_path)
 
-    whisker_duration_per_component_query_config(data=log_data, limit=50)
+    for scale in ["linear", "log"]:
+        whisker_duration_per_component_query_config(data=log_data, scale=scale, limit=50)
+        create_duration_average_plot(data=log_data, scale=scale, limit=50)
+
     create_version_normalized_duration_plot(data=log_data, limit=50)
-    create_duration_average_plot(data=log_data, limit=50)
