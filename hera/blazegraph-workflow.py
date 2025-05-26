@@ -10,17 +10,16 @@ from hera.workflows import (
     Task,
     Resource,
     ExistingVolume,
-    Artifact
 )
 from hera.workflows.models import Toleration, Arguments, Parameter, ValueFrom, ImagePullPolicy
 from experiment_constants import constants
 from experiment_utils import create_service_manifest, create_cleanup_config
 
-@script(inputs=[Parameter(name="version"), Parameter(name="product"), Parameter(name="step")],
+@script(inputs=[Parameter(name="version"), Parameter(name="product"), Parameter(name="step"), Parameter(name="workflow_id")],
         outputs=[Parameter(name="blazegraph-name", value_from=ValueFrom(path="/tmp/blazegraph-name"))])
-def compute_blazegraph_configurations(version: str, product: str, step: str):
+def compute_blazegraph_configurations(version: str, product: str, step: str, workflow_id: str):
     with open("/tmp/blazegraph-name", "w") as f_out:
-        f_out.write(f"blazegraph-{version}-{product}-{step}")
+        f_out.write(f"{workflow_id}-blazegraph-{version}-{product}-{step}")
 
 @script(
     image=constants.python_requests,
@@ -97,8 +96,8 @@ if __name__ == "__main__":
     environment = environment(args)
 
     with WorkflowTemplate(
-        name="blazegraph-xp",
-        entrypoint="blazegraph-xp",
+        name="blazegraph-dag",
+        entrypoint="blazegraph-dag",
         tolerations=[Toleration(
             key="gpu", operator="Exists", effect="PreferNoSchedule")],
         arguments=Arguments(parameters=[
@@ -163,7 +162,7 @@ if __name__ == "__main__":
             args=["{{inputs.parameters.blazegraph-name}}-service", "blazegraph", "{{inputs.parameters.repeat}}", "{{inputs.parameters.version}}", "{{inputs.parameters.product}}", "{{inputs.parameters.step}}"]
         )
 
-        with DAG(name="blazegraph-xp", inputs=[
+        with DAG(name="blazegraph-dag", inputs=[
             Parameter(name="version"),
             Parameter(name="product"),
             Parameter(name="step"),
@@ -172,7 +171,8 @@ if __name__ == "__main__":
                 arguments={
                     "version": dag.get_parameter("version"),
                     "product": dag.get_parameter("product"),
-                    "step": dag.get_parameter("step")
+                    "step": dag.get_parameter("step"),
+                    "workflow_id": "{{workflow.name}}",
                 })
             
             task_blazegraph_create = Task(

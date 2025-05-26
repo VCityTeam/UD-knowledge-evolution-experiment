@@ -15,11 +15,11 @@ from experiment_constants import constants
 from experiment_utils import create_service_manifest, create_cleanup_config
 
 
-@script(inputs=[Parameter(name="version"), Parameter(name="product"), Parameter(name="step"), Parameter(name="mode")],
+@script(inputs=[Parameter(name="version"), Parameter(name="product"), Parameter(name="step"), Parameter(name="mode"), Parameter(name="workflow_id")],
         outputs=[Parameter(name="quaque-name", value_from=ValueFrom(path="/tmp/quaque-name"))])
-def compute_quaque_configurations(version: str, product: str, step: str, mode: str):
+def compute_quaque_configurations(version: str, product: str, step: str, mode: str, workflow_id: str):
     with open("/tmp/quaque-name", "w") as f_out:
-        f_out.write(f"quaque-{mode}-{version}-{product}-{step}")
+        f_out.write(f"{workflow_id}-quaque-{mode}-{version}-{product}-{step}")
 
 
 if __name__ == "__main__":
@@ -28,8 +28,8 @@ if __name__ == "__main__":
     environment = environment(args)
 
     with WorkflowTemplate(
-        name="quaque-xp",
-        entrypoint="quaque-xp",
+        name="quaque-dag",
+        entrypoint="quaque-dag",
         tolerations=[Toleration(
             key="gpu", operator="Exists", effect="PreferNoSchedule")],
         arguments=Arguments(parameters=[
@@ -103,7 +103,7 @@ if __name__ == "__main__":
             args=["{{inputs.parameters.quaque-name}}-service", "converg", "{{inputs.parameters.repeat}}", "{{inputs.parameters.version}}", "{{inputs.parameters.product}}", "{{inputs.parameters.step}}"]
         )
 
-        with DAG(name="quaque-xp", inputs=[
+        with DAG(name="quaque-dag", inputs=[
                 Parameter(name="version"),
                 Parameter(name="product"),
                 Parameter(name="step"),
@@ -117,7 +117,8 @@ if __name__ == "__main__":
                     "version": dag.get_parameter("version"),
                     "product": dag.get_parameter("product"),
                     "step": dag.get_parameter("step"),
-                    "mode": dag.get_parameter("mode")
+                    "mode": dag.get_parameter("mode"),
+                    "workflow_id": "{{workflow.name}}",
                 }
             )
 

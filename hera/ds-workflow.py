@@ -31,8 +31,8 @@ if __name__ == "__main__":
     environment = environment(args)
 
     with WorkflowTemplate(
-        name="dataset-xp",
-        entrypoint="dataset-xp",
+        name="dataset-dag",
+        entrypoint="dataset-dag",
         tolerations=[Toleration(
             key="gpu", operator="Exists", effect="PreferNoSchedule")],
         arguments=Arguments(parameters=[
@@ -91,7 +91,7 @@ if __name__ == "__main__":
             ],
         )
 
-        with DAG(name="dataset-xp", inputs=[Parameter(name="ds_config"), Parameter(name="dataset-pvc-name")]) as dag:
+        with DAG(name="dataset-dag", inputs=[Parameter(name="ds_config"), Parameter(name="dataset-pvc-name")]) as dag:
             task_prepare_dataset_config = prepare_dataset_config(
                 arguments={
                     "ds_config": dag.get_parameter("ds_config")

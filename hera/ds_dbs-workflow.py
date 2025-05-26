@@ -25,7 +25,7 @@ def compute_pvc_config(ds_config: dict):
     with open("/tmp/pvc-size", "w") as f_out:
         f_out.write(f'{total}Mi')
     with open("/tmp/pvc-name", "w") as f_out:
-        f_out.write(f'pvc-ds-dbs-v{ds_config.get("version")}-p{ds_config.get("product")}-s{ds_config.get("step")}')
+        f_out.write(f'pvc-ds-dbs-v{ds_config.get("version")}-p{ds_config.get("product")}-s{ds_config.get("step")}-')
 
 if __name__ == "__main__":
     args = parse_arguments()
@@ -33,8 +33,8 @@ if __name__ == "__main__":
     environment = environment(args)
 
     with WorkflowTemplate(
-        name="dataset-databases-xp",
-        entrypoint="dataset-databases-xp",
+        name="dataset-databases-dag",
+        entrypoint="dataset-databases-dag",
         parallelism=3,
         tolerations=[Toleration(
             key="gpu", operator="Exists", effect="PreferNoSchedule")],
@@ -51,7 +51,7 @@ if __name__ == "__main__":
             action="create",
             set_owner_reference=True,
             manifest=create_volume_manifest('{{inputs.parameters.pvc-name}}', 'ReadWriteOnce', '{{inputs.parameters.pvc-size}}'))
-        with DAG(name="dataset-databases-xp",
+        with DAG(name="dataset-databases-dag",
                  inputs=[Parameter(name="ds_config"), Parameter(name="dbs_config")]) as dag:
             compute_pvc_config_task = compute_pvc_config(
                 arguments={
@@ -73,7 +73,7 @@ if __name__ == "__main__":
             task_ds = Task(
                 name="generate-complete-dataset",
                 template_ref=TemplateRef(
-                    name="dataset-xp", template="dataset-xp"),
+                    name="dataset-dag", template="dataset-dag"),
                 arguments=Arguments(
                     parameters=[dag.get_parameter("ds_config"),
                                 generate_volume_task.get_parameter("dataset-pvc-name")],
@@ -81,9 +81,9 @@ if __name__ == "__main__":
             )
 
             task_dbs = Task(
-                name="blazegraph-converg-flat-converg-condensed",
+                name="components-dag",
                 template_ref=TemplateRef(
-                    name="blazegraph-converg-flat-converg-condensed-xp", template="blazegraph-converg-flat-converg-condensed-xp"),
+                    name="components-dag", template="components-dag"),
                 arguments=Arguments(
                     parameters=[
                         Parameter(name="db_config", value="{{item}}"),

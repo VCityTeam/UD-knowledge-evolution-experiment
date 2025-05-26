@@ -37,7 +37,7 @@ def create_volume_manifest(metadata_name: str, accessModes: str, storage: str) -
     return ("apiVersion: v1\n"
                 "kind: PersistentVolumeClaim\n"
                 "metadata:\n"
-                f"   name: {metadata_name}\n"
+                f"   generateName: {metadata_name}\n"
                 "spec:\n"
                 "   accessModes:\n"
                 f"       - {accessModes}\n"

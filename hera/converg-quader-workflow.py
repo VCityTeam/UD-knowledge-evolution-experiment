@@ -15,11 +15,11 @@ from hera.workflows.models import Toleration, Arguments, Parameter, ImagePullPol
 from experiment_constants import constants
 from experiment_utils import create_service_manifest, create_cleanup_config
 
-@script(inputs=[Parameter(name="version"), Parameter(name="product"), Parameter(name="step"), Parameter(name="mode")],
+@script(inputs=[Parameter(name="version"), Parameter(name="product"), Parameter(name="step"), Parameter(name="mode"), Parameter(name="workflow_id")],
         outputs=[Parameter(name="quader-name", value_from=ValueFrom(path="/tmp/quader-name"))])
-def compute_quader_configurations(version: str, product: str, step: str, mode: str):
+def compute_quader_configurations(version: str, product: str, step: str, mode: str, workflow_id: str):
     with open("/tmp/quader-name", "w") as f_out:
-        f_out.write(f"quader-{version}-{product}-{step}-{mode}")
+        f_out.write(f"{workflow_id}-quader-{version}-{product}-{step}-{mode}")
 
 @script(
     image=constants.python_requests,
@@ -96,8 +96,8 @@ if __name__ == "__main__":
     environment = environment(args)
 
     with WorkflowTemplate(
-        name="quader-xp",
-        entrypoint="quader-xp",
+        name="quader-dag",
+        entrypoint="quader-dag",
         tolerations=[Toleration(
             key="gpu", operator="Exists", effect="PreferNoSchedule")],
         arguments=Arguments(parameters=[
@@ -124,6 +124,8 @@ if __name__ == "__main__":
                 Parameter(name="postgres-name"),
                 Parameter(name="postgres-identifier")
             ],
+            outputs=[
+                Parameter(name="quader-name", value="{{pod.name}}")],
             env=[
                 Env(
                     name="SPRING_DATASOURCE_URL",
@@ -155,7 +157,7 @@ if __name__ == "__main__":
             )
         )
 
-        with DAG(name="quader-xp", inputs=[
+        with DAG(name="quader-dag", inputs=[
                 Parameter(name="version"),
                 Parameter(name="product"),
                 Parameter(name="step"),
@@ -168,7 +170,8 @@ if __name__ == "__main__":
                     "version": dag.get_parameter("version"),
                     "product": dag.get_parameter("product"),
                     "step": dag.get_parameter("step"),
-                    "mode": dag.get_parameter("mode")
+                    "mode": dag.get_parameter("mode"),
+                    "workflow_id": "{{workflow.name}}",
                 }
             )
 

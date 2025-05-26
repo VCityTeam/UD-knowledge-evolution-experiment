@@ -68,8 +68,8 @@ if __name__ == "__main__":
     environment = environment(args)
 
     with WorkflowTemplate(
-        name="workflow-xp-main",
-        entrypoint="workflow-step",
+        name="benchmark-dag",
+        entrypoint="benchmark-dag",
         tolerations=[Toleration(
             key="gpu", operator="Exists", effect="PreferNoSchedule")],
         arguments=Arguments(parameters=[
@@ -109,7 +109,7 @@ if __name__ == "__main__":
         )
 
 
-        with DAG(name="workflow-step"):
+        with DAG(name="benchmark-dag"):
             task_compute_dbs_dss_configurations = compute_dbs_dss_configurations(
                 arguments={"versions": "{{workflow.parameters.versions}}",
                            "products": "{{workflow.parameters.products}}",
@@ -119,7 +119,7 @@ if __name__ == "__main__":
             task_ds_dbs = Task(
                 name="dataset-databases",
                 template_ref=TemplateRef(
-                    name="dataset-databases-xp", template="dataset-databases-xp"),
+                    name="dataset-databases-dag", template="dataset-databases-dag"),
                 arguments=Arguments(
                     parameters=[Parameter(name="ds_config", value="{{item.ds_config}}"),
                                 Parameter(name="dbs_config", value="{{item.dbs_config}}"),],

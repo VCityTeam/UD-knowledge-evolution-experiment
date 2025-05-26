@@ -9,28 +9,23 @@ from hera.workflows import (
     Env,
     Resources,
     Resource,
-    ExistingVolume
 )
 from hera.workflows.models import Toleration, Arguments, Parameter, ImagePullPolicy, ValueFrom, TemplateRef
 from experiment_constants import constants
 from experiment_utils import create_service_manifest, create_cleanup_config
 
 
-@script(inputs=[Parameter(name="version"), Parameter(name="product"), Parameter(name="step"), Parameter(name="mode")],
+@script(inputs=[Parameter(name="version"), Parameter(name="product"), Parameter(name="step"), Parameter(name="mode"), Parameter(name="workflow_id")],
         outputs=[Parameter(name="postgres-name", value_from=ValueFrom(path="/tmp/postgres-name")),
-                 Parameter(name="quader-name", value_from=ValueFrom(path="/tmp/quader-name")),
                  Parameter(name="postgres-identifier", value_from=ValueFrom(path="/tmp/postgres-identifier")),
                  Parameter(name="postgres-data", value_from=ValueFrom(path="/tmp/postgres-data"))])
-def compute_postgres_configurations(version: str, product: str, step: str, mode: str):
-    postgres_name = f"postgres-{mode}-{version}-{product}-{step}"
-    quader_name = f"quader-{mode}-{version}-{product}-{step}"
+def compute_postgres_configurations(version: str, product: str, step: str, mode: str, workflow_id: str):
+    postgres_name = f"{workflow_id}-postgres-{mode}-{version}-{product}-{step}"
     postgres_identifier = f"postgres-{mode}-{version}-{product}-{step}"
     postgres_data = f"/var/lib/postgresql/data/{version}/{product}/{step}"
 
     with open("/tmp/postgres-name", "w") as f_out:
         f_out.write(postgres_name)
-    with open("/tmp/quader-name", "w") as f_out:
-        f_out.write(quader_name)
     with open("/tmp/postgres-identifier", "w") as f_out:
         f_out.write(f'{postgres_identifier}')
     with open("/tmp/postgres-data", "w") as f_out:
@@ -42,8 +37,8 @@ if __name__ == "__main__":
     environment = environment(args)
 
     with WorkflowTemplate(
-        name="converg-xp",
-        entrypoint="converg-xp",
+        name="converg-dag",
+        entrypoint="converg-dag",
         tolerations=[Toleration(
             key="gpu", operator="Exists", effect="PreferNoSchedule")],
         arguments=Arguments(parameters=[
@@ -101,8 +96,7 @@ if __name__ == "__main__":
             )
         )
 
-
-        with DAG(name="converg-xp", inputs=[
+        with DAG(name="converg-dag", inputs=[
                 Parameter(name="version"),
                 Parameter(name="product"),
                 Parameter(name="step"),
@@ -113,7 +107,8 @@ if __name__ == "__main__":
                     "version": dag.get_parameter("version"),
                     "product": dag.get_parameter("product"),
                     "step": dag.get_parameter("step"),
-                    "mode": dag.get_parameter("mode")
+                    "mode": dag.get_parameter("mode"),
+                    "workflow_id": "{{workflow.name}}",
                 }
             )
 
@@ -158,7 +153,7 @@ if __name__ == "__main__":
             task_converg_quaque = Task(
                 name="converg-quaque",
                 template_ref=TemplateRef(
-                    name="quaque-xp", template="quaque-xp"),
+                    name="quaque-dag", template="quaque-dag"),
                 arguments=Arguments(
                     parameters=[
                         dag.get_parameter("version"),

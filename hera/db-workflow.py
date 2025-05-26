@@ -31,9 +31,8 @@ if __name__ == "__main__":
     environment = environment(args)
 
     with WorkflowTemplate(
-        name="blazegraph-converg-flat-converg-condensed-xp",
-        entrypoint="blazegraph-converg-flat-converg-condensed-xp",
-        parallelism=3,
+        name="components-dag",
+        entrypoint="components-dag",
         tolerations=[Toleration(
             key="gpu", operator="Exists", effect="PreferNoSchedule")],
         arguments=Arguments(parameters=[
@@ -53,7 +52,7 @@ if __name__ == "__main__":
                    f"cleanup={create_cleanup_config(version='{{inputs.parameters.version}}',product='{{inputs.parameters.product}}',step='{{inputs.parameters.step}}')}"]
         )
 
-        with DAG(name="blazegraph-converg-flat-converg-condensed-xp", inputs=[Parameter(name="db_config"), Parameter(name="dataset-pvc-name")]) as dag:
+        with DAG(name="components-dag", inputs=[Parameter(name="db_config"), Parameter(name="dataset-pvc-name")]) as dag:
             task_prepare_database_config = prepare_database_config(
                 arguments={
                     "db_config": dag.get_parameter("db_config")
@@ -62,7 +61,7 @@ if __name__ == "__main__":
             task_blazegraph = Task(
                 name="blazegraph",
                 template_ref=TemplateRef(
-                    name="blazegraph-xp", template="blazegraph-xp"),
+                    name="blazegraph-dag", template="blazegraph-dag"),
                 arguments=Arguments(
                     parameters=[
                         task_prepare_database_config.get_parameter("version"),
@@ -76,7 +75,7 @@ if __name__ == "__main__":
             task_converg_condensed = Task(
                 name="converg-condensed",
                 template_ref=TemplateRef(
-                    name="converg-xp", template="converg-xp"),
+                    name="converg-dag", template="converg-dag"),
                 arguments=Arguments(
                     parameters=[
                         task_prepare_database_config.get_parameter("version"),
@@ -91,7 +90,7 @@ if __name__ == "__main__":
             task_converg_flat = Task(
                 name="converg-flat",
                 template_ref=TemplateRef(
-                    name="converg-xp", template="converg-xp"),
+                    name="converg-dag", template="converg-dag"),
                 arguments=Arguments(
                     parameters=[
                         task_prepare_database_config.get_parameter("version"),
