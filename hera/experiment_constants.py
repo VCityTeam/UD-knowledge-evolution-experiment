@@ -15,6 +15,7 @@ constants = types.SimpleNamespace(
     quads_querier = "harbor.pagoda.liris.cnrs.fr/ud-evolution/quads-querier:v1.2.0",
     new_quads_querier = "harbor.pagoda.liris.cnrs.fr/ud-evolution/quads-querier:v1.3.0",
     get_workflow_logs = "harbor.pagoda.liris.cnrs.fr/ud-evolution/get-workflow-logs:v1.0.0",
+    converg_space = "harbor.pagoda.liris.cnrs.fr/ud-evolution/converg-space:v1.0.0",
     log_to_plots = "harbor.pagoda.liris.cnrs.fr/ud-evolution/log-to-plots:v1.0.0",
     repeat = 200,
     cpu_limit = 2,

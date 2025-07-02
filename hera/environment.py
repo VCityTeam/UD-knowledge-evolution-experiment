@@ -1,4 +1,4 @@
-from hera_k8s_utils import k8s_cluster, num_exp_environment, Struct
+from hera_k8s_utils import k8s_cluster, num_exp_environment
 from configuration import configuration
 
 class environment(num_exp_environment):
@@ -13,15 +13,15 @@ class environment(num_exp_environment):
         ### A persistent volume (defined at the k8s level) can be used by
         # tasks of a workflow in order to flow output results from an upstream
         # task to a downstream one, and persist once the workflow is finished
-        self.persisted_volume = Struct()
+        # self.persisted_volume = Struct()
         k8s.assert_volume_claim(args.k8s_dataset_volume_claim_name)
-        self.persisted_volume.claim_name = args.k8s_dataset_volume_claim_name
+        # self.persisted_volume.claim_name = args.k8s_dataset_volume_claim_name
 
         # The mount path is technicality standing in between Environment and
         # Experiment related notions: more precisely it is a technicality that
         # should be dealt by the (Experiment) Conductor (refer to
         # https://gitlab.liris.cnrs.fr/expedata/expe-data-project/-/blob/master/lexicon.md#conductor )
-        self.persisted_volume.mount_path = "/data"
+        # self.persisted_volume.mount_path = "/data"
 
     def compute_dataset_volume_name(self, configuration: configuration):
         return f"volume-{configuration.product}-{configuration.version}-{configuration.step}"

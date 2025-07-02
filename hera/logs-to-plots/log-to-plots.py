@@ -1,3 +1,4 @@
+import json
 import re
 import os
 
@@ -56,8 +57,11 @@ def extract_log_info(log_file_path: str, repeat=200):
                 })
                 
     extracted_data = remove_all_with_less_than_repeat(data=extracted_data, repeat=repeat)
+    print(f"After remove_all_with_less_than_repeat: {len(extracted_data)}")
     extracted_data = remove_all_with_less_than_count_version(data=extracted_data, count=4)
+    print(f"After remove_all_with_less_than_count_version: {len(extracted_data)}")
     extracted_data = remove_all_with_less_than_count_component(data=extracted_data, count=3)
+    print(f"After remove_all_with_less_than_count_component: {len(extracted_data)}")
 
     return extracted_data
 
@@ -467,6 +471,15 @@ def sanitize_filename(name, max_len=100):
         name = name[:max_len]
     return name
 
+def store_data_to_json(data, file_path):
+    """
+    Store the data to a json file
+    Args:
+        data (list): List of dictionaries
+        file_path (str): Path to the json file
+    """
+    with open(file_path, 'w') as f:
+        json.dump(data, f)
 
 if __name__ == "__main__":
     # Afficher les informations extraites
@@ -477,6 +490,8 @@ if __name__ == "__main__":
             "LOG_FILE_PATH environment variable is not set.")
 
     log_data = extract_log_info(log_file_path)
+    
+    store_data_to_json(data=log_data, file_path="log_data.json")
 
     for scale in ["linear", "log"]:
         whisker_duration_per_component_query_config(data=log_data, scale=scale, limit=50)
