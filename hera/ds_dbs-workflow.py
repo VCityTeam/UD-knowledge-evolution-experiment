@@ -1,5 +1,3 @@
-from parse_arguments import parse_arguments
-from environment import environment
 from hera.workflows import (
     DAG,
     WorkflowTemplate,
@@ -7,10 +5,11 @@ from hera.workflows import (
     Task,
     Resource
 )
+from hera.shared import global_config
 from hera.workflows.models import (
     Toleration, Arguments, Parameter, TemplateRef, ValueFrom)
 from experiment_utils import create_volume_manifest
-
+import os
 
 @script(inputs=[Parameter(name="ds_config")], outputs=[Parameter(name="pvc-name", value_from=ValueFrom(path="/tmp/pvc-name")), Parameter(name="pvc-size", value_from=ValueFrom(path="/tmp/pvc-size"))])
 def compute_pvc_config(ds_config: dict):
@@ -28,9 +27,10 @@ def compute_pvc_config(ds_config: dict):
         f_out.write(f'pvc-ds-dbs-v{ds_config.get("version")}-p{ds_config.get("product")}-s{ds_config.get("step")}-')
 
 if __name__ == "__main__":
-    args = parse_arguments()
 
-    environment = environment(args)
+    global_config.host = f'https://{os.environ.get("ARGO_SERVER")}'
+    global_config.token = os.environ.get("ARGO_TOKEN")
+    global_config.namespace = os.environ.get("ARGO_NAMESPACE", "argo")
 
     with WorkflowTemplate(
         name="dataset-databases-dag",

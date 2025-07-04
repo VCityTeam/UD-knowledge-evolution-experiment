@@ -1,5 +1,3 @@
-from parse_arguments import parse_arguments
-from environment import environment
 from hera.workflows import (
     DAG,
     WorkflowTemplate,
@@ -11,9 +9,11 @@ from hera.workflows import (
     Resource,
     ExistingVolume
 )
+from hera.shared import global_config
 from hera.workflows.models import Toleration, Arguments, Parameter, ImagePullPolicy, ValueFrom
 from experiment_constants import constants
 from experiment_utils import create_service_manifest, create_cleanup_config
+import os
 
 @script(inputs=[Parameter(name="version"), Parameter(name="product"), Parameter(name="step"), Parameter(name="mode"), Parameter(name="workflow_id")],
         outputs=[Parameter(name="quader-name", value_from=ValueFrom(path="/tmp/quader-name"))])
@@ -91,9 +91,10 @@ def create_relational_dataset_importer(
         print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
-    args = parse_arguments()
-
-    environment = environment(args)
+    
+    global_config.host = f'https://{os.environ.get("ARGO_SERVER")}'
+    global_config.token = os.environ.get("ARGO_TOKEN")
+    global_config.namespace = os.environ.get("ARGO_NAMESPACE", "argo")
 
     with WorkflowTemplate(
         name="quader-dag",

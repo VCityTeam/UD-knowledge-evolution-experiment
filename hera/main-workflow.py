@@ -1,5 +1,3 @@
-from parse_arguments import parse_arguments
-from environment import environment
 from hera.workflows import (
     DAG,
     WorkflowTemplate,
@@ -10,8 +8,10 @@ from hera.workflows import (
     Env,
     Artifact
 )
+from hera.shared import global_config
 from hera.workflows.models import Toleration, Arguments, Parameter, TemplateRef, ImagePullPolicy
 from experiment_constants import constants
+import os
 
 
 @script()
@@ -63,9 +63,10 @@ def compute_dbs_dss_configurations(versions: list[int], products: list[int], ste
 
 
 if __name__ == "__main__":
-    args = parse_arguments()
 
-    environment = environment(args)
+    global_config.host = f'https://{os.environ.get("ARGO_SERVER")}'
+    global_config.token = os.environ.get("ARGO_TOKEN")
+    global_config.namespace = os.environ.get("ARGO_NAMESPACE", "argo")
 
     with WorkflowTemplate(
         name="benchmark-dag",
