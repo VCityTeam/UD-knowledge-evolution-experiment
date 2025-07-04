@@ -1,7 +1,3 @@
-from hera.workflows import (
-    script,
-)
-
 def create_service_manifest(metadata_name: str, cleanup: str, selector_name:str, port: int, target_port: int) -> str:
     """
     Creates a Kubernetes service manifest.
