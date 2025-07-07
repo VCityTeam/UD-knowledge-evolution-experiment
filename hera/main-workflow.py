@@ -75,7 +75,7 @@ if __name__ == "__main__":
             key="gpu", operator="Exists", effect="PreferNoSchedule")],
         arguments=Arguments(parameters=[
             Parameter(name="versions", description="List of versions", default="[10,50,100]"),
-            Parameter(name="products", description="List of initial products", default="[1,20,40]"),
+            Parameter(name="products", description="List of initial products (inside the first version)", default="[1]"),
             Parameter(name="steps", description="List of steps between two versions", default="[0,10,20]")])
     ) as wt:
         
