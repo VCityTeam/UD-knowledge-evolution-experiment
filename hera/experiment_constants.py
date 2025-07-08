@@ -4,8 +4,8 @@ import os
 constants = types.SimpleNamespace(
     postgres = "postgres@sha256:4ec37d2a07a0067f176fdcc9d4bb633a5724d2cc4f892c7a2046d054bb6939e5",
     blazegraph = "vcity/blazegraph-cors@sha256:c6f9556ca53ff01304557e349d2f10b3e121dae7230426f4c64fa42b2cbaf805",
-    quader = "vcity/quads-loader@sha256:70ee2ffd4a304727425fe59040b994d98c14fea9186aa4cc120145182e0bf331",
-    quaque = "vcity/quads-query@sha256:74b337f53386462cd5d37b25d6d780a784398db9e9928b7df52584f974a307a6",
+    quader = "vcity/quads-loader:ql-v3.0.0",
+    quaque = "vcity/quads-query:qq-v3.0.0",
     bsbm = "vcity/bsbm@sha256:7d16cee08c88731d575c1634345f23e49007c19643b170c51f1d8b49eb722caf",
     quads_transformer = "vcity/quads-creator@sha256:351e87bbd951cdeac03af5f8b0057d0fd5fd382fec49adb3ad769edddc1c4e5a", 
     postgres_username = os.environ.get('POSTGRES_USER', "postgres"),

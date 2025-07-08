@@ -62,7 +62,7 @@ def prepare_database_config(db_config: dict):
         Env(name="PYTHONUNBUFFERED", value="1"),
     ]
 )
-def log_blazegraph_bigdata_size(
+def log_blazegraph_bigdata_space(
     version: str,
     product: str,
     step: str,
@@ -153,8 +153,8 @@ if __name__ == "__main__":
                 ),
             )
 
-            task_log_blazegraph_bigdata_size = log_blazegraph_bigdata_size(
-                name="blazegraph-bigdata-size-logger",
+            task_log_blazegraph_bigdata_space = log_blazegraph_bigdata_space(
+                name="blazegraph-bigdata-space",
                 arguments={
                     "version": task_prepare_database_config.get_parameter("version"),
                     "product": task_prepare_database_config.get_parameter("product"),
@@ -208,6 +208,6 @@ if __name__ == "__main__":
             task_prepare_database_config >> generate_blazegraph_volume_task >> [task_blazegraph,
                                      task_converg_condensed, task_converg_flat] >> task_services_removal
             
-            task_blazegraph >> task_log_blazegraph_bigdata_size
+            task_blazegraph >> task_log_blazegraph_bigdata_space
 
         wt.create()

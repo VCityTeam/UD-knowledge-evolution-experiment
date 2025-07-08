@@ -65,7 +65,7 @@ class databases:
         Container(
             name=postgres_container_name,
             image=constants.postgres,
-            image_pull_policy=models.ImagePullPolicy.always,
+            image_pull_policy=models.ImagePullPolicy.if_not_present,
             daemon=True,
             labels={"app": postgres_container_name},
             env=[
@@ -111,7 +111,7 @@ class databases:
         Container(
             name=postgres_flat_container_name,
             image=constants.postgres,
-            image_pull_policy=models.ImagePullPolicy.always,
+            image_pull_policy=models.ImagePullPolicy.if_not_present,
             daemon=True,
             labels={"app": postgres_flat_container_name},
             env=[
@@ -161,7 +161,7 @@ class databases:
         Container(
             name=blazegraph_container_name,
             image=constants.blazegraph,
-            image_pull_policy=models.ImagePullPolicy.always,
+            image_pull_policy=models.ImagePullPolicy.if_not_present,
             labels={"app": blazegraph_container_name},
             daemon=True,
             env=[
@@ -229,7 +229,7 @@ class databases:
         Container(
             name=querier_container_name,
             image=constants.quads_querier,
-            image_pull_policy=models.ImagePullPolicy.always,
+            image_pull_policy=models.ImagePullPolicy.if_not_present,
             args=[blazegraph_service_name, quaque_service_name, quaque_flat_service_name]
         )
 

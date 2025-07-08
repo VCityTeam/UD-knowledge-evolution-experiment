@@ -15,6 +15,7 @@ from experiment_constants import constants
 from experiment_utils import create_service_manifest, create_cleanup_config
 import os
 
+
 @script(inputs=[Parameter(name="version"), Parameter(name="product"), Parameter(name="step"), Parameter(name="mode"), Parameter(name="workflow_id")],
         outputs=[Parameter(name="quader-name", value_from=ValueFrom(path="/tmp/quader-name"))])
 def compute_quader_configurations(version: str, product: str, step: str, mode: str, workflow_id: str):
@@ -27,6 +28,7 @@ def compute_quader_configurations(version: str, product: str, step: str, mode: s
         Parameter(name="existing_volume_name", description="The name of the existing volume containing the data to import"),
         Parameter(name="number_of_versions", description="The number of versions to import"),
         Parameter(name="hostname", description="The hostname of the server to import the data into"),
+        Parameter(name="mode", description="Configuration for mode")
     ],
     volumes=[
         ExistingVolume(
@@ -42,7 +44,8 @@ def compute_quader_configurations(version: str, product: str, step: str, mode: s
 )
 def create_relational_dataset_importer(
     number_of_versions: int,
-    hostname: str
+    hostname: str,
+    mode: str
 ) -> None:
     from datetime import datetime
     import os
@@ -87,6 +90,11 @@ def create_relational_dataset_importer(
 
                     end = int(time.time() * 1000)
                     print(f"\n{datetime.now().isoformat()} - [Measure] (Import STS {file}): {end-start}ms;")
+
+        if mode == "flat":
+            print("[quads-loader] Flattening the dataset")
+            response = requests.get(f'http://{hostname}-service:8080/import/flatten')
+            response.raise_for_status()
     except Exception as e:
         print(f"An error occurred: {e}")
 
@@ -117,7 +125,7 @@ if __name__ == "__main__":
         quader_create = Container(
             name="quader",
             image=constants.quader,
-            image_pull_policy=ImagePullPolicy.always,
+            image_pull_policy=ImagePullPolicy.if_not_present,
             daemon=True,
             labels={"app": "{{inputs.parameters.quader-name}}"},
             inputs=[
@@ -202,7 +210,8 @@ if __name__ == "__main__":
                 arguments={
                     "existing_volume_name": dag.get_parameter("dataset-pvc-name"),
                     "number_of_versions": dag.get_parameter("version"),
-                    "hostname": task_compute_quader_configurations.get_parameter("quader-name")
+                    "hostname": task_compute_quader_configurations.get_parameter("quader-name"),
+                    "mode": dag.get_parameter("mode")
                 }
             )
 

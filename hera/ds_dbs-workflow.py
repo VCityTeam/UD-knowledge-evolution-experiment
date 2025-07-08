@@ -11,8 +11,12 @@ from hera.workflows.models import (
 from experiment_utils import create_volume_manifest
 import os
 
-@script(inputs=[Parameter(name="ds_config")], outputs=[Parameter(name="pvc-name", value_from=ValueFrom(path="/tmp/pvc-name")), Parameter(name="pvc-size", value_from=ValueFrom(path="/tmp/pvc-size"))])
-def compute_pvc_config(ds_config: dict):
+@script(
+        inputs=[Parameter(name="ds_config")],
+        outputs=[Parameter(name="pvc-name", value_from=ValueFrom(path="/tmp/pvc-name")),
+                 Parameter(name="pvc-size", value_from=ValueFrom(path="/tmp/pvc-size"))]
+)
+def compute_pvc_config(ds_config: object = None):
     number_of_datasets = 3  # (triples + quads(relational) + quads(graph))
     number_of_version = ds_config.get("version") + 1
     number_of_step = ds_config.get("step") + 1
@@ -24,7 +28,7 @@ def compute_pvc_config(ds_config: dict):
     with open("/tmp/pvc-size", "w") as f_out:
         f_out.write(f'{total}Mi')
     with open("/tmp/pvc-name", "w") as f_out:
-        f_out.write(f'pvc-ds-dbs-v{ds_config.get("version")}-p{ds_config.get("product")}-s{ds_config.get("step")}-')
+        f_out.write(f"pvc-ds-dbs-v{number_of_version}-s{number_of_step}-")
 
 if __name__ == "__main__":
 

@@ -18,11 +18,11 @@ import os
                  Parameter(name="step", value_from=ValueFrom(path="/tmp/step"))])
 def prepare_dataset_config(ds_config: dict):   
     with open("/tmp/version", "w") as f_out:
-        f_out.write(f'{ds_config.get("version")}')
+        f_out.write(str(ds_config.get('version')))
     with open("/tmp/product", "w") as f_out:
-        f_out.write(f'{ds_config.get("product")}')
+        f_out.write(str(ds_config.get('product')))
     with open("/tmp/step", "w") as f_out:
-        f_out.write(f'{ds_config.get("step")}')
+        f_out.write(str(ds_config.get('step')))
 
 
 if __name__ == "__main__":
@@ -50,7 +50,7 @@ if __name__ == "__main__":
                 claim_name='{{inputs.parameters.dataset-pvc-name}}',
                 mount_path="/app/data",
             )],
-            image_pull_policy=ImagePullPolicy.always,
+            image_pull_policy=ImagePullPolicy.if_not_present,
             args=["generate-n", "{{inputs.parameters.version}}", "{{inputs.parameters.product}}", "{{inputs.parameters.step}}"],
         )
 
@@ -63,7 +63,7 @@ if __name__ == "__main__":
                 claim_name='{{inputs.parameters.dataset-pvc-name}}',
                 mount_path="/app/data",
             )],
-            image_pull_policy=ImagePullPolicy.always,
+            image_pull_policy=ImagePullPolicy.if_not_present,
              args=[
                 f"/app/data/data/relational",
                 f"/app/data/data",
@@ -82,7 +82,7 @@ if __name__ == "__main__":
                 claim_name='{{inputs.parameters.dataset-pvc-name}}',
                 mount_path="/app/data",
             )],
-            image_pull_policy=ImagePullPolicy.always,
+            image_pull_policy=ImagePullPolicy.if_not_present,
              args=[
                 f"/app/data/data/theoretical",
                 f"/app/data/data",

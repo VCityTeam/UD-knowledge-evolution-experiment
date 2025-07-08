@@ -49,7 +49,7 @@ if __name__ == "__main__":
         quaque_create = Container(
             name="quaque",
             image=constants.quaque,
-            image_pull_policy=ImagePullPolicy.always,
+            image_pull_policy=ImagePullPolicy.if_not_present,
             labels={"app": "{{inputs.parameters.quaque-name}}"},
             daemon=True,
             env=[
@@ -99,7 +99,7 @@ if __name__ == "__main__":
                 Parameter(name="product"),
                 Parameter(name="step")
             ],
-            image_pull_policy=ImagePullPolicy.always,
+            image_pull_policy=ImagePullPolicy.if_not_present,
             args=["{{inputs.parameters.quaque-name}}-service", "converg", "{{inputs.parameters.repeat}}", "{{inputs.parameters.version}}", "{{inputs.parameters.product}}", "{{inputs.parameters.step}}"]
         )
 

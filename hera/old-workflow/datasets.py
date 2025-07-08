@@ -240,7 +240,7 @@ class datasets:
             Container(
                 name=bsbm_container_name,
                 image=constants.bsbm,
-                image_pull_policy=models.ImagePullPolicy.always,
+                image_pull_policy=models.ImagePullPolicy.if_not_present,
                 args=["generate-n", configuration.version, configuration.product, configuration.step],
                 volumes=[volume_mount],
                 resources=Resources(memory_request=f"{constants.memory_request}Gi", memory_limit=f"{constants.memory_limit}Gi", cpu_limit=constants.cpu_limit)
@@ -319,7 +319,7 @@ class datasets:
         Container(
             name=typed_transformer_container_name,
             image=constants.quads_transformer,
-            image_pull_policy=models.ImagePullPolicy.always,
+            image_pull_policy=models.ImagePullPolicy.if_not_present,
             args=[
                 f"/app/data/data/{type}",
                 f"/app/data/data",

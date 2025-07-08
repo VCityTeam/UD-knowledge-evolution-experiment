@@ -56,7 +56,7 @@ if __name__ == "__main__":
         postgres_create = Container(
             name="postgres",
             image=constants.postgres,
-            image_pull_policy=ImagePullPolicy.always,
+            image_pull_policy=ImagePullPolicy.if_not_present,
             daemon=True,
             labels={"app": "{{inputs.parameters.postgres-name}}"},
             inputs=[
@@ -101,7 +101,7 @@ if __name__ == "__main__":
         converg_space_create = Container(
             name="converg-space",
             image=constants.converg_space,
-            image_pull_policy=ImagePullPolicy.always,
+            image_pull_policy=ImagePullPolicy.if_not_present,
             daemon=True,
             inputs=[
                 Parameter(name="postgres-name"),
@@ -164,7 +164,7 @@ if __name__ == "__main__":
             task_converg_quader = Task(
                 name="converg-quader",
                 template_ref=TemplateRef(
-                    name="quader-xp", template="quader-xp"),
+                    name="quader-dag", template="quader-dag"),
                 arguments=Arguments(
                     parameters=[
                         dag.get_parameter("version"),

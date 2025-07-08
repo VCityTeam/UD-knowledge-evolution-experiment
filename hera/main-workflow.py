@@ -6,7 +6,7 @@ from hera.workflows import (
     Container,
     SecretEnv,
     Env,
-    Artifact
+    Artifact,
 )
 from hera.shared import global_config
 from hera.workflows.models import Toleration, Arguments, Parameter, TemplateRef, ImagePullPolicy
@@ -82,7 +82,7 @@ if __name__ == "__main__":
         get_workflow_logs = Container(
             name="fetch-workflow-logs",
             image=constants.get_workflow_logs,
-            image_pull_policy=ImagePullPolicy.always,
+            image_pull_policy=ImagePullPolicy.if_not_present,
             inputs=[
                 Parameter(name="workflow_id"),
             ],
@@ -91,16 +91,16 @@ if __name__ == "__main__":
                 SecretEnv(name="AWS_ACCESS_KEY_ID", secret_name="ceph-s3-pagoda", secret_key="accesskey"),
                 Env(name="WORKFLOW_ID", value="{{inputs.parameters.workflow_id}}"),
             ],
-            outputs=Artifact(name="merged_logs", path="/app/{{inputs.parameters.workflow_id}}/merged_logs.log"),
+            outputs=Artifact(name="merged_logs", path="/app/{{inputs.parameters.workflow_id}}/"),
         )
 
-        create_plots = Container(
-            name="plots",
+        create_time_plots = Container(
+            name="time-plots",
             image=constants.log_to_plots,
             inputs=[
                 Artifact(name="merged_logs", path="/app/merged_logs.log"),
             ],
-            image_pull_policy=ImagePullPolicy.always,
+            image_pull_policy=ImagePullPolicy.if_not_present,
             env=[
                 Env(name="LOG_FILE_PATH", value="merged_logs.log"),
             ],
@@ -108,7 +108,6 @@ if __name__ == "__main__":
                 Artifact(name="plots", path="/app/"),
             ]
         )
-
 
         with DAG(name="benchmark-dag"):
             task_compute_dbs_dss_configurations = compute_dbs_dss_configurations(
@@ -132,16 +131,16 @@ if __name__ == "__main__":
                 name="aggregate-workflow-logs",
                 template=get_workflow_logs,
                 arguments={
-                    "workflow_id": "{{workflow.name}}/",
+                    "workflow_id": "{{workflow.name}}",
                 }
             )
 
-            create_plots_task = Task(
-                name="plots",
-                template=create_plots,
+            create_time_plots_task = Task(
+                name="time-plots",
+                template=create_time_plots,
                 arguments=get_workflow_logs_task.get_artifact("merged_logs"),
             )
 
-            task_compute_dbs_dss_configurations >> task_ds_dbs >> get_workflow_logs_task >> create_plots_task
+            task_compute_dbs_dss_configurations >> task_ds_dbs >> get_workflow_logs_task >> create_time_plots_task
 
         wt.create()

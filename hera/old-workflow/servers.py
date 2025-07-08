@@ -48,7 +48,7 @@ class interface_servers:
         Container(
             name=quader_container_name,
             image=constants.quader,
-            image_pull_policy=models.ImagePullPolicy.always,
+            image_pull_policy=models.ImagePullPolicy.if_not_present,
             daemon=True,
             labels={"app": quader_container_name},
             env=[
@@ -91,7 +91,7 @@ class interface_servers:
         Container(
             name=quader_flat_container_name,
             image=constants.quader,
-            image_pull_policy=models.ImagePullPolicy.always,
+            image_pull_policy=models.ImagePullPolicy.if_not_present,
             daemon=True,
             labels={"app": quader_flat_container_name},
             env=[
@@ -134,7 +134,7 @@ class interface_servers:
         Container(
             name=quaque_container_name,
             image=constants.quaque,
-            image_pull_policy=models.ImagePullPolicy.always,
+            image_pull_policy=models.ImagePullPolicy.if_not_present,
             labels={"app": quaque_container_name},
             daemon=True,
             env=[
@@ -174,7 +174,7 @@ class interface_servers:
         Container(
             name=quaque_flat_container_name,
             image=constants.quaque,
-            image_pull_policy=models.ImagePullPolicy.always,
+            image_pull_policy=models.ImagePullPolicy.if_not_present,
             labels={"app": quaque_flat_container_name},
             daemon=True,
             env=[

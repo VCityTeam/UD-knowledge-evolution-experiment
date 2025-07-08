@@ -38,7 +38,6 @@ def extract_log_info(log_file_path: str, repeat=200):
                 query = f"query-{match.group('query').split('-')[-1].split('.')[0]}"
                 nb_try = int(match.group('try'))
                 version_conf = int(match.group('version'))
-                product_conf = int(match.group('product'))
                 step_conf = int(match.group('step'))
                 # Convertir le temps en millisecondes
                 duration_ms = int(match.group('duration').replace("ms", ""))
@@ -46,7 +45,6 @@ def extract_log_info(log_file_path: str, repeat=200):
 
                 extracted_data.append({
                     "VERSION": version_conf,
-                    "PRODUCT": product_conf,
                     "STEP": step_conf,
                     "COMPONENT": component,
                     "DURATION (ms)": duration_ms,
@@ -67,66 +65,66 @@ def extract_log_info(log_file_path: str, repeat=200):
 
 def remove_all_with_less_than_repeat(data, repeat=200):
     """
-    Group by VERSION, PRODUCT, STEP, QUERY and
+    Group by VERSION, STEP, QUERY and
     remove all entries from data when the max TRY is less than repeat
     """
     import pandas as pd
     df = pd.DataFrame(data)
     
     max_lower_than_repeat = []
-    for name, group in df.groupby(['VERSION', 'PRODUCT', 'STEP', 'QUERY']):
+    for name, group in df.groupby(['VERSION', 'STEP', 'QUERY']):
         max_try = group['TRY'].max()
         if max_try < repeat:
             max_lower_than_repeat.append(name)
-            
-    # Remove all entries from data have the same VERSION, PRODUCT, STEP, QUERY in max_lower_than_repeat
+
+    # Remove all entries from data have the same VERSION, STEP, QUERY in max_lower_than_repeat
     for name in max_lower_than_repeat:
-        version, product, step, query = name
-        df = df[~((df['VERSION'] == version) & (df['PRODUCT'] == product) & (df['STEP'] == step) & (df['QUERY'] == query))]        
-    
+        version, step, query = name
+        df = df[~((df['VERSION'] == version) & (df['STEP'] == step) & (df['QUERY'] == query))]
+
     return df.to_dict(orient='records')
 
 def remove_all_with_less_than_count_version(data, count=4):
     """
-    Group by PRODUCT, STEP, QUERY, COMPONENT and
+    Group by STEP, QUERY, COMPONENT and
     remove all entries from data when the count of version is less than count
     """
     import pandas as pd
     df = pd.DataFrame(data)
     
     # Count the number of unique versions for each group
-    version_counts = df.groupby(['PRODUCT', 'STEP', 'QUERY', 'COMPONENT_NAME'])['VERSION'].nunique().reset_index()
+    version_counts = df.groupby(['STEP', 'QUERY', 'COMPONENT_NAME'])['VERSION'].nunique().reset_index()
     version_counts.rename(columns={'VERSION': 'COUNT_VERSION'}, inplace=True)
 
     # Filter groups with less than count unique versions
     groups_to_remove = version_counts[version_counts['COUNT_VERSION'] < count]
 
-    # Remove all entries from data have the same PRODUCT, STEP, QUERY in groups_to_remove
+    # Remove all entries from data have the same STEP, QUERY in groups_to_remove
     for _, row in groups_to_remove.iterrows():
-        product, step, query, _, _ = row
-        df = df[~((df['PRODUCT'] == product) & (df['STEP'] == step) & (df['QUERY'] == query))]        
-    
+        step, query, _, _ = row
+        df = df[~((df['STEP'] == step) & (df['QUERY'] == query))]
+
     return df.to_dict(orient='records')
 
 def remove_all_with_less_than_count_component(data, count=3):
     """
-    Group by PRODUCT, STEP, QUERY, VERSION and
+    Group by STEP, QUERY, VERSION and
     remove all entries from data when the count of component is less than count
     """
     import pandas as pd
     df = pd.DataFrame(data)
     
     # Count the number of unique components for each group
-    component_counts = df.groupby(['PRODUCT', 'STEP', 'QUERY', 'VERSION'])['COMPONENT_NAME'].nunique().reset_index()
+    component_counts = df.groupby(['STEP', 'QUERY', 'VERSION'])['COMPONENT_NAME'].nunique().reset_index()
     component_counts.rename(columns={'COMPONENT_NAME': 'COUNT_COMPONENT'}, inplace=True)
 
     # Filter groups with less than count unique components
     groups_to_remove = component_counts[component_counts['COUNT_COMPONENT'] < count]
 
-    # Remove all entries from data have the same PRODUCT, STEP, QUERY in groups_to_remove
+    # Remove all entries from data have the same STEP, QUERY in groups_to_remove
     for _, row in groups_to_remove.iterrows():
-        product, step, query, version, _ = row
-        df = df[~((df['PRODUCT'] == product) & (df['STEP'] == step) & (df['QUERY'] == query) & (df['VERSION'] == version))]
+        step, query, version, _ = row
+        df = df[~((df['STEP'] == step) & (df['QUERY'] == query) & (df['VERSION'] == version))]
 
     return df.to_dict(orient='records')
 
@@ -137,7 +135,7 @@ def whisker_duration_per_component_query_config(data, scale="linear", limit=None
 
     print("Starting to create boxplots for duration per component and query configuration.")
 
-    grouping_cols = ['VERSION', 'PRODUCT', 'STEP', 'QUERY']
+    grouping_cols = ['VERSION', 'STEP', 'QUERY']
     df = pd.DataFrame(data)
     if limit is not None:
         df = df[df['TRY'] >= limit]
@@ -148,8 +146,8 @@ def whisker_duration_per_component_query_config(data, scale="linear", limit=None
 
     for name, group in grouped_data:
         # Extract group keys
-        version, product, step, query = name
-        grouped_output_dir = f"{output_dir}/{scale}/v-{version}-p{product}-s{step}"
+        version, step, query = name
+        grouped_output_dir = f"{output_dir}/{scale}/v-{version}-s{step}"
         os.makedirs(grouped_output_dir, exist_ok=True)
 
         fig, ax = plt.subplots(figsize=(12, 6))
@@ -179,7 +177,7 @@ def whisker_duration_per_component_query_config(data, scale="linear", limit=None
 
         # Improve layout and labels
         ax.set_title(
-            f'Duration Distribution\nVersion={version}, Product={product}, Step={step}, Query={query}')
+            f'Duration Distribution\nVersion={version}, Step={step}, Query={query}')
         ax.set_ylabel('Duration (ms)')
         ax.set_xlabel('Component')
 
@@ -215,7 +213,7 @@ def create_duration_average_plot(data, scale="linear", limit=None):
     os.makedirs(output_dir, exist_ok=True)
 
     # Define the columns that identify a unique configuration
-    config_cols = ['STEP', 'PRODUCT', 'QUERY', 'COMPONENT_NAME']
+    config_cols = ['STEP', 'QUERY', 'COMPONENT_NAME']
 
     # --- Step 1: Calculate mean duration for each version within each configuration ---
     mean_duration_per_version = df.groupby(
@@ -233,16 +231,16 @@ def create_duration_average_plot(data, scale="linear", limit=None):
     if num_unique_configs == 0:
         print("No data or configurations found to plot.")
     else:
-        # associate step, product, query to list of components
+        # associate step, query to list of components
         config_to_components = {}
         for config in unique_configs:
-            step, product, query, component = config
-            if (step, product, query) not in config_to_components:
-                config_to_components[(step, product, query)] = []
-            config_to_components[(step, product, query)].append(component)
+            step, query, component = config
+            if (step, query) not in config_to_components:
+                config_to_components[(step, query)] = []
+            config_to_components[(step, query)].append(component)
 
         # --- Step 3: Generate plots ---
-        for (step, product, query), components in config_to_components.items():
+        for (step, query), components in config_to_components.items():
             fig, ax = plt.subplots(figsize=(12, 6))
 
             components = sorted(
@@ -256,9 +254,9 @@ def create_duration_average_plot(data, scale="linear", limit=None):
             # Filter data for the current configuration
             for component in components:
                 # Filter the DataFrame for the current configuration
-                config_cols = ['STEP', 'PRODUCT', 'QUERY', 'COMPONENT_NAME']
+                config_cols = ['STEP', 'QUERY', 'COMPONENT_NAME']
                 # Create a tuple for the current configuration
-                config = [step, product, query, component]
+                config = [step, query, component]
                 config_filter = (mean_duration_per_version[config_cols] == pd.Series(
                     config, index=config_cols)).all(axis=1)
                 plot_data = mean_duration_per_version[config_filter].sort_values(by='VERSION')
@@ -276,7 +274,7 @@ def create_duration_average_plot(data, scale="linear", limit=None):
 
             # Set title and labels
             # Create a multi-line title for better readability
-            title_str = f"Step: {step}, Prod: {product}\nQuery: {query}"
+            title_str = f"Step: {step}, Query: {query}"
             ax.set_title(title_str, fontsize=9)
             ax.set_xlabel("Version")
             ax.set_ylabel("Mean Duration (ms)")
@@ -292,8 +290,8 @@ def create_duration_average_plot(data, scale="linear", limit=None):
             ax.xaxis.get_major_locator().set_params(integer=True)
 
             # --- Create a safe filename for the plot ---
-            os.makedirs(f"{output_dir}/{step}_{product}", exist_ok=True)
-            filepath = f"{output_dir}/{step}_{product}/duration_average_{query}.png"
+            os.makedirs(f"{output_dir}/{step}", exist_ok=True)
+            filepath = f"{output_dir}/{step}/duration_average_{query}.png"
             plt.savefig(filepath, dpi=300)
             plt.close(fig)
 
@@ -302,14 +300,14 @@ def create_version_normalized_duration_plot(data, limit=None):
     """
     Generates plots showing normalized execution time per version for configurations.
 
-    Each plot corresponds to a (STEP, PRODUCT, QUERY) combination and shows
+    Each plot corresponds to a (STEP, QUERY) combination and shows
     lines for different COMPONENT_NAMEs. The y-axis represents the duration
     of a specific version divided by the duration of the lowest version number
-    found within that specific (STEP, PRODUCT, QUERY, COMPONENT_NAME) group.
+    found within that specific (STEP, QUERY, COMPONENT_NAME) group.
 
     Args:
         data (list or similar): Input data convertible to a pandas DataFrame.
-                                 Expected columns: 'STEP', 'PRODUCT', 'QUERY',
+                                 Expected columns: 'STEP', 'QUERY',
                                  'COMPONENT_NAME', 'VERSION', 'DURATION (ms)', 'TRY'.
         limit (int, optional): If provided, only include rows where 'TRY' >= limit.
                                Defaults to None.
@@ -326,7 +324,7 @@ def create_version_normalized_duration_plot(data, limit=None):
         df = df[df['TRY'] >= limit]
 
     # Ensure essential columns exist
-    config_cols = ['STEP', 'PRODUCT', 'QUERY', 'COMPONENT_NAME']
+    config_cols = ['STEP', 'QUERY', 'COMPONENT_NAME']
     required_cols = config_cols + ['VERSION', 'DURATION (ms)']
     if not all(col in df.columns for col in required_cols):
         missing = [col for col in required_cols if col not in df.columns]
@@ -369,25 +367,24 @@ def create_version_normalized_duration_plot(data, limit=None):
         axis=1
     )
 
-    # --- Step 5: Prepare for plotting (Group by Step, Product, Query) ---
+    # --- Step 5: Prepare for plotting (Group by Step, Query) ---
     unique_configs_for_plotting = results_df[[
-        'STEP', 'PRODUCT', 'QUERY']].drop_duplicates().values.tolist()
+        'STEP', 'QUERY']].drop_duplicates().values.tolist()
     num_plot_configs = len(unique_configs_for_plotting)
     print(
-        f"Found {num_plot_configs} unique (STEP, PRODUCT, QUERY) combinations for plotting.")
+        f"Found {num_plot_configs} unique (STEP, QUERY) combinations for plotting.")
 
     if num_plot_configs == 0:
         print("No configurations found to plot.")
     else:
         # --- Step 6: Generate plots ---
         for plot_config in unique_configs_for_plotting:
-            step, product, query = plot_config
+            step, query = plot_config
             fig, ax = plt.subplots(figsize=(12, 6))
 
-            # Filter results_df for the current Step, Product, Query
+            # Filter results_df for the current Step, Query
             plot_group_data = results_df[
                 (results_df['STEP'] == step) &
-                (results_df['PRODUCT'] == product) &
                 (results_df['QUERY'] == query)
             ].copy()
 
@@ -424,7 +421,7 @@ def create_version_normalized_duration_plot(data, limit=None):
                         marker='o', linestyle='-', label=component, color=color)
 
             # --- Plot Customization ---
-            title_str = f"Step: {step}, Product: {product}\nQuery: {query}"
+            title_str = f"Step: {step}: Query: {query}"
             ax.set_title(title_str, fontsize=11)  # Adjusted font size slightly
             ax.set_xlabel("Version")
             # Updated Y-axis label
@@ -449,7 +446,7 @@ def create_version_normalized_duration_plot(data, limit=None):
 
             # --- Saving the plot ---
             # Define subdirectory
-            step_prod_dir = f"{output_dir}/{step}_{product}"
+            step_prod_dir = f"{output_dir}/{step}"
             # Create subdirectory if needed
             os.makedirs(step_prod_dir, exist_ok=True)
             # Sanitize query part of filename (replace non-alphanumeric with underscore)

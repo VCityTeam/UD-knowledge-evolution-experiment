@@ -126,7 +126,7 @@ if __name__ == "__main__":
         blazegraph_create = Container(
             name="blazegraph",
             image=constants.blazegraph,
-            image_pull_policy=ImagePullPolicy.always,
+            image_pull_policy=ImagePullPolicy.if_not_present,
             labels={"app": "{{inputs.parameters.blazegraph-name}}"},
             daemon=True,
             init_containers=[
@@ -196,7 +196,7 @@ if __name__ == "__main__":
                 Parameter(name="product"),
                 Parameter(name="step")
             ],
-            image_pull_policy=ImagePullPolicy.always,
+            image_pull_policy=ImagePullPolicy.if_not_present,
             args=["{{inputs.parameters.blazegraph-name}}-service", "blazegraph", "{{inputs.parameters.repeat}}",
                   "{{inputs.parameters.version}}", "{{inputs.parameters.product}}", "{{inputs.parameters.step}}"]
         )
