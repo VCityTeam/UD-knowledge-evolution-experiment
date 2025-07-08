@@ -10,6 +10,8 @@ def get_component_name(component: str):
     """
     parts = component.split('-')
     component_parts = []
+    parts = parts[3:]
+
     for part in parts:
         # Check if the part consists only of digits
         if part.isdigit():

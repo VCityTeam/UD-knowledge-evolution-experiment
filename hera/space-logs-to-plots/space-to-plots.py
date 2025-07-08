@@ -55,7 +55,7 @@ def extract_log_info(log_file_path: str, repeat=200):
                     "COMPONENT_NAME": get_component_name(component)
                 })
                 
-    extracted_data = remove_all_with_less_than_count_version(data=extracted_data, count=4)
+    extracted_data = remove_all_with_less_than_count_version(data=extracted_data, count=3)
     print(f"After remove_all_with_less_than_count_version: {len(extracted_data)}")
 
     return extracted_data
@@ -192,7 +192,7 @@ def store_data_to_json(data, file_path):
 if __name__ == "__main__":
     # Afficher les informations extraites
 
-    log_file_path = os.getenv("LOG_FILE_PATH", "hera/space-logs-to-plots/merged_logs.log")
+    log_file_path = os.getenv("LOG_FILE_PATH", "merged_logs.log")
     if not log_file_path:
         raise EnvironmentError(
             "LOG_FILE_PATH environment variable is not set.")
