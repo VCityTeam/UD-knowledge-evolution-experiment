@@ -76,13 +76,13 @@ def log_blazegraph_bigdata_space(
         now = round(time.time())
         log_entry = {
             "component": "blazegraph",
-            "space": size,
-            "version": version,
-            "product": product,
-            "step": step,
-            "time": now
+            "space": str(size),
+            "version": str(version),
+            "product": str(product),
+            "step": str(step),
+            "time": str(now)
         }
-        print(json.dumps(log_entry))
+        print(json.dumps(log_entry).replace(" ", ""))
 
 
 if __name__ == "__main__":

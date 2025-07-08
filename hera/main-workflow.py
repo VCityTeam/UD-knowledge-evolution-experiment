@@ -91,21 +91,37 @@ if __name__ == "__main__":
                 SecretEnv(name="AWS_ACCESS_KEY_ID", secret_name="ceph-s3-pagoda", secret_key="accesskey"),
                 Env(name="WORKFLOW_ID", value="{{inputs.parameters.workflow_id}}"),
             ],
-            outputs=Artifact(name="merged_logs", path="/app/{{inputs.parameters.workflow_id}}/"),
+            outputs=[Artifact(name="time_merged_logs", path="/app/{{inputs.parameters.workflow_id}}/querier/merged_logs.log"),
+                     Artifact(name="space_merged_logs", path="/app/{{inputs.parameters.workflow_id}}/space/merged_logs.log")],
         )
 
         create_time_plots = Container(
             name="time-plots",
             image=constants.log_to_plots,
             inputs=[
-                Artifact(name="merged_logs", path="/app/merged_logs.log"),
+                Artifact(name="time_merged_logs", path="/app/merged_logs.log"),
             ],
             image_pull_policy=ImagePullPolicy.if_not_present,
             env=[
                 Env(name="LOG_FILE_PATH", value="merged_logs.log"),
             ],
             outputs=[
-                Artifact(name="plots", path="/app/"),
+                Artifact(name="time-plots", path="/app/"),
+            ]
+        )
+        
+        create_space_plots = Container(
+            name="space-plots",
+            image=constants.space_logs_to_plots,
+            inputs=[
+                Artifact(name="space_merged_logs", path="/app/merged_logs.log"),
+            ],
+            image_pull_policy=ImagePullPolicy.if_not_present,
+            env=[
+                Env(name="LOG_FILE_PATH", value="merged_logs.log"),
+            ],
+            outputs=[
+                Artifact(name="space-plots", path="/app/"),
             ]
         )
 
@@ -138,9 +154,15 @@ if __name__ == "__main__":
             create_time_plots_task = Task(
                 name="time-plots",
                 template=create_time_plots,
-                arguments=get_workflow_logs_task.get_artifact("merged_logs"),
+                arguments=get_workflow_logs_task.get_artifact("time_merged_logs"),
             )
 
-            task_compute_dbs_dss_configurations >> task_ds_dbs >> get_workflow_logs_task >> create_time_plots_task
+            create_space_plots_task = Task(
+                name="space-plots",
+                template=create_space_plots,
+                arguments=get_workflow_logs_task.get_artifact("space_merged_logs"),
+            )
+
+            task_compute_dbs_dss_configurations >> task_ds_dbs >> get_workflow_logs_task >> [create_time_plots_task, create_space_plots_task]
 
         wt.create()
