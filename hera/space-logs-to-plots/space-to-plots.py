@@ -83,31 +83,25 @@ def remove_all_with_less_than_count_version(data, count=4):
     return df.to_dict(orient='records')
 
 
-def create_space_average_plot(data, scale="linear"):
+def create_space_plot(data, scale="linear"):
     import pandas as pd
     import matplotlib.pyplot as plt
 
-    print("Starting to create average space plots.")
+    print("Starting to create space plots.")
 
     # Read the uploaded JSON file into a pandas DataFrame
     # Use the file handle provided by the environment
     df = pd.DataFrame(data)
 
-    output_dir = f'plots/average_space/{scale}'
+    output_dir = f'plots/space/{scale}'
     os.makedirs(output_dir, exist_ok=True)
 
     # Define the columns that identify a unique configuration
     config_cols = ['STEP', 'COMPONENT_NAME']
 
-    # --- Step 1: Calculate mean space for each version within each configuration ---
-    mean_space_per_version = df.groupby(
-        config_cols + ['VERSION'])['SPACE'].mean().reset_index()
-    mean_space_per_version.rename(
-        columns={'SPACE': 'MEAN_SPACE_CONFIG'}, inplace=True)
-
     # --- Step 2: Prepare for plotting ---
     # Get unique configurations
-    unique_configs = mean_space_per_version[config_cols].drop_duplicates().values.tolist()
+    unique_configs = df[config_cols].drop_duplicates().values.tolist()
     num_unique_configs = len(unique_configs)
     print(
         f"Found {num_unique_configs} unique configurations based on {config_cols}.")
@@ -141,9 +135,9 @@ def create_space_average_plot(data, scale="linear"):
                 config_cols = ['STEP', 'COMPONENT_NAME']
                 # Create a tuple for the current configuration
                 config = [step, component]
-                config_filter = (mean_space_per_version[config_cols] == pd.Series(
+                config_filter = (df[config_cols] == pd.Series(
                     config, index=config_cols)).all(axis=1)
-                plot_data = mean_space_per_version[config_filter].sort_values(by='VERSION')
+                plot_data = df[config_filter].sort_values(by='VERSION')
 
                 # Assign color based on component name
                 if component.startswith('blazegraph'):
@@ -153,18 +147,18 @@ def create_space_average_plot(data, scale="linear"):
                 else:
                     color = 'green'
 
-                ax.plot(plot_data['VERSION'], plot_data['MEAN_SPACE_CONFIG'],
+                ax.plot(plot_data['VERSION'], plot_data['SPACE'],
                         marker='o', linestyle='-', label=component, color=color)
 
             # Set title and labels
             # Create a multi-line title for better readability
-            title_str = f"Average Space Usage per Version - Step: {step}"
+            title_str = f"Space Usage per Version - Step: {step}"
             ax.set_title(title_str, fontsize=9)
             ax.set_xlabel("Version")
-            ax.set_ylabel("Mean Space (Mb)")
+            ax.set_ylabel("Space (Mb)")
             if scale == "log":
                 ax.set_yscale("log")
-                ax.set_ylabel("Mean Space Log (Mb)")
+                ax.set_ylabel("Space Log (Mb)")
 
             ax.grid(True)
             # Add legend to the plot
@@ -175,7 +169,7 @@ def create_space_average_plot(data, scale="linear"):
 
             # --- Create a safe filename for the plot ---
             os.makedirs(f"{output_dir}/{step}", exist_ok=True)
-            filepath = f"{output_dir}/{step}/space_average.png"
+            filepath = f"{output_dir}/{step}/space.png"
             plt.savefig(filepath, dpi=300)
             plt.close(fig)
 
@@ -202,5 +196,5 @@ if __name__ == "__main__":
     store_data_to_json(data=log_data, file_path="log_data.json")
 
     for scale in ["linear", "log"]:
-        create_space_average_plot(data=log_data, scale=scale)
+        create_space_plot(data=log_data, scale=scale)
  

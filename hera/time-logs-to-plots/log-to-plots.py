@@ -155,9 +155,9 @@ def whisker_duration_per_component_query_config(data, scale="linear", limit=None
         fig, ax = plt.subplots(figsize=(12, 6))
 
         # Get unique components and their corresponding durations for the boxplot
-        components = sorted(group['COMPONENT'].unique(), key=lambda x: (x.startswith(
+        components = sorted(group['COMPONENT_NAME'].unique(), key=lambda x: (x.startswith(
             'blazegraph'), x.startswith('quaque-flat'), x.startswith('quaque-condensed')), reverse=True)
-        data_to_plot = [group[group['COMPONENT'] == comp]
+        data_to_plot = [group[group['COMPONENT_NAME'] == comp]
                         ['DURATION (ms)'] for comp in components]
 
         # Create the boxplot
