@@ -22,5 +22,7 @@ constants = types.SimpleNamespace(
     cpu_limit = 2,
     memory_request = "4",
     memory_limit = "8",
-    timeout = "0"
+    timeout = "0",
+    ostrich = "rdfostrich/ostrich:latest",
+    jena = "stain/jena-fuseki:5.1.0"
 )
