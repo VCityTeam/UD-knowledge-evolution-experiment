@@ -8,6 +8,9 @@ def get_component_name(component: str):
     Extracts the component name from a given string.
     The component name is the part after the last dot in the string.
     """
+    if component.startswith("jena"):
+        return "jena"
+
     parts = component.split('-')
     component_parts = []
     parts = parts[3:]
@@ -23,7 +26,7 @@ def get_component_name(component: str):
     return '-'.join(component_parts)
 
 
-def extract_log_info(log_file_path: str, repeat=200):
+def extract_log_info(log_file_path: str):
     # Définir une expression régulière pour correspondre au format du log
     log_pattern = r'\{"component":"(?P<component>[^"]+)","query":"(?P<query>[^"]+)","try":"(?P<try>[^"]+)","duration":"(?P<duration>[^"]+)","version":"(?P<version>[^"]+)","product":"(?P<product>[^"]+)","step":"(?P<step>[^"]+)","time":"(?P<time>[^"]+)"\}'
     extracted_data = []
@@ -55,12 +58,16 @@ def extract_log_info(log_file_path: str, repeat=200):
                     "TIME": time_unix,
                     "COMPONENT_NAME": get_component_name(component)
                 })
-                
-    extracted_data = remove_all_with_less_than_repeat(data=extracted_data, repeat=repeat)
+
+    min_repeat = int(os.getenv("COUNT_REPEAT", 200))
+    min_count_version = int(os.getenv("COUNT_VERSION", 3))
+    min_count_component = int(os.getenv("COUNT_COMPONENT", 3))
+
+    extracted_data = remove_all_with_less_than_repeat(data=extracted_data, repeat=min_repeat)
     print(f"After remove_all_with_less_than_repeat: {len(extracted_data)}")
-    extracted_data = remove_all_with_less_than_count_version(data=extracted_data, count=3)
+    extracted_data = remove_all_with_less_than_count_version(data=extracted_data, count=min_count_version)
     print(f"After remove_all_with_less_than_count_version: {len(extracted_data)}")
-    extracted_data = remove_all_with_less_than_count_component(data=extracted_data, count=3)
+    extracted_data = remove_all_with_less_than_count_component(data=extracted_data, count=min_count_component)
     print(f"After remove_all_with_less_than_count_component: {len(extracted_data)}")
 
     return extracted_data
@@ -156,7 +163,7 @@ def whisker_duration_per_component_query_config(data, scale="linear", limit=None
 
         # Get unique components and their corresponding durations for the boxplot
         components = sorted(group['COMPONENT_NAME'].unique(), key=lambda x: (x.startswith(
-            'blazegraph'), x.startswith('quaque-flat'), x.startswith('quaque-condensed')), reverse=True)
+            'blazegraph'), x.startswith('jena'), x.startswith('quaque-flat'), x.startswith('quaque-condensed')), reverse=True)
         data_to_plot = [group[group['COMPONENT_NAME'] == comp]
                         ['DURATION (ms)'] for comp in components]
 
@@ -168,6 +175,8 @@ def whisker_duration_per_component_query_config(data, scale="linear", limit=None
         for patch, comp in zip(bp['boxes'], components):
             if comp.startswith('blazegraph'):
                 patch.set_facecolor('blue')
+            elif comp.startswith('jena'):
+                patch.set_facecolor('purple')
             elif comp.startswith('quaque-flat'):
                 patch.set_facecolor('orange')
             else:
@@ -248,7 +257,7 @@ def create_duration_average_plot(data, scale="linear", limit=None):
             components = sorted(
                 components,
                 key=lambda x:
-                    (x.startswith('blazegraph'), x.startswith(
+                    (x.startswith('blazegraph'), x.startswith('jena'), x.startswith(
                         'quaque-flat'), x.startswith('quaque-condensed')),
                     reverse=True
             )
@@ -266,6 +275,8 @@ def create_duration_average_plot(data, scale="linear", limit=None):
                 # Assign color based on component name
                 if component.startswith('blazegraph'):
                     color = 'blue'
+                elif component.startswith('jena'):
+                    color = 'purple'
                 elif component.startswith('quaque-flat'):
                     color = 'orange'
                 else:
@@ -394,7 +405,7 @@ def create_version_normalized_duration_plot(data, limit=None):
             components = sorted(
                 plot_group_data['COMPONENT_NAME'].unique(),
                 key=lambda x:
-                (not x.startswith('blazegraph'), not x.startswith(
+                (not x.startswith('blazegraph'), not x.startswith('jena'), not x.startswith(
                     'quaque-flat'), not x.startswith('quaque-condensed'))
             )
 
@@ -410,6 +421,8 @@ def create_version_normalized_duration_plot(data, limit=None):
                 # Assign color based on component name (same logic as before)
                 if component.startswith('blazegraph'):
                     color = 'blue'
+                elif component.startswith('jena'):
+                    color = 'purple'
                 elif component.startswith('quaque-flat'):
                     color = 'orange'
                 # Added condition for condensed

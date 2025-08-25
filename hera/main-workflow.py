@@ -76,7 +76,12 @@ if __name__ == "__main__":
         arguments=Arguments(parameters=[
             Parameter(name="versions", description="List of versions", default="[10,50,100]"),
             Parameter(name="products", description="List of initial products (inside the first version)", default="[1]"),
-            Parameter(name="steps", description="List of steps between two versions", default="[0,10,20]")])
+            Parameter(name="steps", description="List of steps between two versions", default="[0,10,20]"),
+            Parameter(name="count_version", description="Minimum number of different versions a component must have to be included in the plots", default="3"),
+            Parameter(name="count_component", description="Minimum number of different components a version must have to be included in the plots", default="3"),
+            Parameter(name="count_repeat", description="Minimum number of times a query must be repeated to be included in the plots", default="200")
+        ]),
+
     ) as wt:
         
         get_workflow_logs = Container(
@@ -100,10 +105,16 @@ if __name__ == "__main__":
             image=constants.log_to_plots,
             inputs=[
                 Artifact(name="time_merged_logs", path="/app/merged_logs.log"),
+                Parameter(name="count_version"),
+                Parameter(name="count_component"),
+                Parameter(name="count_repeat"),
             ],
             image_pull_policy=ImagePullPolicy.if_not_present,
             env=[
                 Env(name="LOG_FILE_PATH", value="merged_logs.log"),
+                Env(name="COUNT_VERSION", value="{{inputs.parameters.count_version}}"),
+                Env(name="COUNT_COMPONENT", value="{{inputs.parameters.count_component}}"),
+                Env(name="COUNT_REPEAT", value="{{inputs.parameters.count_repeat}}"),
             ],
             outputs=[
                 Artifact(name="time-plots", path="/app/"),
@@ -115,10 +126,12 @@ if __name__ == "__main__":
             image=constants.space_logs_to_plots,
             inputs=[
                 Artifact(name="space_merged_logs", path="/app/merged_logs.log"),
+                Parameter(name="count_version")
             ],
             image_pull_policy=ImagePullPolicy.if_not_present,
             env=[
                 Env(name="LOG_FILE_PATH", value="merged_logs.log"),
+                Env(name="COUNT_VERSION", value="{{inputs.parameters.count_version}}"),
             ],
             outputs=[
                 Artifact(name="space-plots", path="/app/"),
@@ -154,13 +167,22 @@ if __name__ == "__main__":
             create_time_plots_task = Task(
                 name="time-plots",
                 template=create_time_plots,
-                arguments=get_workflow_logs_task.get_artifact("time_merged_logs"),
+                arguments={
+                    "time_merged_logs": get_workflow_logs_task.get_artifact("time_merged_logs"),
+                    "count_version": "{{workflow.parameters.count_version}}",
+                    "count_component": "{{workflow.parameters.count_component}}",
+                    "count_repeat": "{{workflow.parameters.count_repeat}}",
+                }
+    
             )
 
             create_space_plots_task = Task(
                 name="space-plots",
                 template=create_space_plots,
-                arguments=get_workflow_logs_task.get_artifact("space_merged_logs"),
+                arguments={
+                    "space_merged_logs": get_workflow_logs_task.get_artifact("space_merged_logs"),
+                    "count_version": "{{workflow.parameters.count_version}}",
+                },
             )
 
             task_compute_dbs_dss_configurations >> task_ds_dbs >> get_workflow_logs_task >> [create_time_plots_task, create_space_plots_task]

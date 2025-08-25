@@ -11,7 +11,7 @@ from hera.workflows import (
     UserContainer,
 )
 from hera.shared import global_config
-from hera.workflows.models import Toleration, Arguments, Parameter, ValueFrom, ImagePullPolicy, SecurityContext
+from hera.workflows.models import Toleration, Arguments, Parameter, ValueFrom, ImagePullPolicy, SecurityContext, PodSecurityContext
 from experiment_constants import constants
 from experiment_utils import create_service_manifest, create_cleanup_config
 import os
@@ -45,6 +45,7 @@ def compute_jena_configurations(version: str, product: str, step: str, workflow_
     resources=Resources(memory_limit=f"{constants.memory_limit}Gi"),
     env=[
         Env(name="PYTHONUNBUFFERED", value="1"),
+        Env(name="JENA_ADMIN_PASSWORD", value=constants.postgres_password)
     ]
 )
 def create_theoretical_dataset_importer(
@@ -85,8 +86,10 @@ def create_theoretical_dataset_importer(
                     # Effectuer la requête HTTP pour importer la version
                     try:
                         with open(filepath, 'r') as f:
+                            jena_admin_password = os.environ.get('JENA_ADMIN_PASSWORD', '')
+                            url = f"http://admin:{jena_admin_password}@{hostname}-service:3030/mydataset/data"
                             response = requests.post(
-                                f'http://{hostname}-service:3030/mydataset/data',
+                                url,
                                 headers={'Content-Type': 'application/trig'},
                                 data=f.read(),
                             )
@@ -133,6 +136,8 @@ if __name__ == "__main__":
                 Parameter(name="jena-name"),
                 Parameter(name="jena-pvc-name"),
             ],
+            security_context=SecurityContext(run_as_user=1000, run_as_group=1000),
+            pod_security_context=PodSecurityContext(fs_group=1000),
             init_containers=[
                 UserContainer(
                     name="init-jena-data",
@@ -141,10 +146,7 @@ if __name__ == "__main__":
                     security_context=SecurityContext(run_as_user=0),
                     args=[
                         "cp -r /fuseki/. /mnt/fuseki && "
-                        "echo '[main]' > /mnt/fuseki/shiro.ini && "
-                        "echo '' >> /mnt/fuseki/shiro.ini && "
-                        "echo '[urls]' >> /mnt/fuseki/shiro.ini && "
-                        "echo '/** = anon' >> /mnt/fuseki/shiro.ini && "
+                        "chown -R 1000:1000 /mnt/fuseki && "
                         "echo 'Jena data initialized'"
                     ],
                     volumes=[
@@ -158,7 +160,9 @@ if __name__ == "__main__":
             ],
             env=[
                 Env(name="TDB", value="2"),
-                Env(name="FUSEKI_DATASET_1", value="mydataset")
+                Env(name="FUSEKI_DATASET_1", value="mydataset"),
+                Env(name="ADMIN_PASSWORD", value=constants.postgres_password),
+                Env(name="TINI_SUBREAPER", value="true")
             ],
             resources=Resources(memory_request=f"{constants.memory_request}Gi",
                                 memory_limit=f"{constants.memory_limit}Gi", cpu_limit=constants.cpu_limit),
@@ -194,6 +198,9 @@ if __name__ == "__main__":
         querier_create = Container(
             name="jena-querier",
             image=constants.new_quads_querier,
+            env=[
+                Env(name="ADMIN_PASSWORD", value=constants.postgres_password),
+            ],
             inputs=[
                 Parameter(name="jena-name"),
                 Parameter(name="repeat"),
