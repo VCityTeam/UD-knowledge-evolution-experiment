@@ -8,8 +8,7 @@ def get_component_name(component: str):
     Extracts the component name from a given string.
     The component name is the part after the last dot in the string.
     """
-    if component.startswith("jena"):
-        return component
+        return "jena"
     if component.startswith("blazegraph"):
         # For blazegraph, we want to keep the full name
         return component
