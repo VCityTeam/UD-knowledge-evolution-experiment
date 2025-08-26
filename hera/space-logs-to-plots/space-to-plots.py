@@ -8,6 +8,7 @@ def get_component_name(component: str):
     Extracts the component name from a given string.
     The component name is the part after the last dot in the string.
     """
+        return "jena"
     if component.startswith("blazegraph"):
         # For blazegraph, we want to keep the full name
         return component
@@ -26,7 +27,7 @@ def get_component_name(component: str):
     return '-'.join(component_parts)
 
 
-def extract_log_info(log_file_path: str, repeat=200):
+def extract_log_info(log_file_path: str, min_count_version: int):
     # Définir une expression régulière pour correspondre au format du log
     log_pattern = r'\{"component":"(?P<component>[^"]+)","space":"(?P<space>[^"]+)","version":"(?P<version>[^"]+)","product":"(?P<product>[^"]+)","step":"(?P<step>[^"]+)","time":"(?P<time>[^"]+)"\}'
     extracted_data = []
@@ -54,8 +55,8 @@ def extract_log_info(log_file_path: str, repeat=200):
                     "TIME": time_unix,
                     "COMPONENT_NAME": get_component_name(component)
                 })
-                
-    extracted_data = remove_all_with_less_than_count_version(data=extracted_data, count=3)
+
+    extracted_data = remove_all_with_less_than_count_version(data=extracted_data, count=min_count_version)
     print(f"After remove_all_with_less_than_count_version: {len(extracted_data)}")
 
     return extracted_data
@@ -124,7 +125,7 @@ def create_space_plot(data, scale="linear"):
             components = sorted(
                 components,
                 key=lambda x:
-                    (x.startswith('blazegraph'), x.startswith(
+                    (x.startswith('blazegraph'), x.startswith('jena'), x.startswith(
                         'quaque-flat'), x.startswith('quaque-condensed')),
                     reverse=True
             )
@@ -142,6 +143,8 @@ def create_space_plot(data, scale="linear"):
                 # Assign color based on component name
                 if component.startswith('blazegraph'):
                     color = 'blue'
+                elif component.startswith('jena'):
+                    color = 'purple'
                 elif component.startswith('postgres-flat'):
                     color = 'orange'
                 else:
@@ -187,11 +190,16 @@ if __name__ == "__main__":
     # Afficher les informations extraites
 
     log_file_path = os.getenv("LOG_FILE_PATH", "merged_logs.log")
+    min_count_version = int(os.getenv("COUNT_VERSION", 3))
+
     if not log_file_path:
         raise EnvironmentError(
             "LOG_FILE_PATH environment variable is not set.")
 
-    log_data = extract_log_info(log_file_path)
+    print(f"Log file path: {log_file_path}")
+    print(f"Minimum count version: {min_count_version}")
+
+    log_data = extract_log_info(log_file_path, min_count_version)
     
     store_data_to_json(data=log_data, file_path="log_data.json")
 

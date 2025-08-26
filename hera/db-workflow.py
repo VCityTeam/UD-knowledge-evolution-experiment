@@ -83,7 +83,52 @@ def log_blazegraph_bigdata_space(
             "time": str(now)
         }
         print(json.dumps(log_entry).replace(" ", ""))
-
+        
+@script(
+    image=constants.python_requests,
+    inputs=[
+        Parameter(name="version", description="The version configuration"),
+        Parameter(name="product", description="The product configuration"),
+        Parameter(name="step", description="The step configuration"),
+        Parameter(name="jena_pvc_name",
+                  description="The name of the Jena PVC to bind to the container"),
+    ],
+    volumes=[
+        ExistingVolume(
+            name="{{inputs.parameters.jena_pvc_name}}",
+            claim_name="{{inputs.parameters.jena_pvc_name}}",
+            mount_path="/fuseki"
+        )
+    ],
+    env=[
+        Env(name="PYTHONUNBUFFERED", value="1"),
+    ]
+)
+def log_jena_space(
+    version: str,
+    product: str,
+    step: str,
+):
+    import os
+    import time
+    import json
+    mydataset_path = "/fuseki/databases/mydataset"
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(mydataset_path):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            if os.path.isfile(fp):
+                total_size += os.path.getsize(fp)
+    now = round(time.time())
+    log_entry = {
+        "component": "jena",
+        "space": str(total_size),
+        "version": str(version),
+        "product": str(product),
+        "step": str(step),
+        "time": str(now)
+    }
+    print(json.dumps(log_entry).replace(" ", ""))
 
 if __name__ == "__main__":
     
@@ -109,6 +154,15 @@ if __name__ == "__main__":
             action="create",
             set_owner_reference=True,
             manifest=create_volume_manifest('pvc-', 'ReadWriteOnce', '{{inputs.parameters.blazegraph-pvc-size}}'))
+        
+        generate_jena_volume = Resource(
+            name="jena-volume",
+            inputs=[Parameter(name="jena-pvc-size")],
+            outputs=[
+                Parameter(name="jena-pvc-name", value_from=ValueFrom(json_path="{.metadata.name}"))],
+            action="create",
+            set_owner_reference=True,
+            manifest=create_volume_manifest('pvc-', 'ReadWriteOnce', '{{inputs.parameters.jena-pvc-size}}'))
 
         services_removal = Resource(
             name="remove-services",
@@ -138,6 +192,16 @@ if __name__ == "__main__":
                 )
             )
 
+            generate_jena_volume_task = Task(
+                name="jena-volume",
+                template=generate_jena_volume,
+                arguments=Arguments(
+                    parameters=[
+                        task_prepare_database_config.get_parameter("blazegraph-pvc-size").with_name("jena-pvc-size")
+                    ]
+                )
+            )
+
             task_blazegraph = Task(
                 name="blazegraph",
                 template_ref=TemplateRef(
@@ -160,6 +224,31 @@ if __name__ == "__main__":
                     "product": task_prepare_database_config.get_parameter("product"),
                     "step": task_prepare_database_config.get_parameter("step"),
                     "blazegraph_pvc_name": generate_blazegraph_volume_task.get_parameter("blazegraph-pvc-name")
+                }
+            )
+
+            task_jena = Task(
+                name="jena",
+                template_ref=TemplateRef(
+                    name="jena-dag", template="jena-dag"),
+                arguments=Arguments(
+                    parameters=[
+                        task_prepare_database_config.get_parameter("version"),
+                        task_prepare_database_config.get_parameter("product"),
+                        task_prepare_database_config.get_parameter("step"),
+                        dag.get_parameter("dataset-pvc-name"),
+                        generate_jena_volume_task.get_parameter("jena-pvc-name")
+                    ]
+                ),
+            )
+
+            task_log_jena_space = log_jena_space(
+                name="jena-space",
+                arguments={
+                    "version": task_prepare_database_config.get_parameter("version"),
+                    "product": task_prepare_database_config.get_parameter("product"),
+                    "step": task_prepare_database_config.get_parameter("step"),
+                    "jena_pvc_name": generate_jena_volume_task.get_parameter("jena-pvc-name")
                 }
             )
 
@@ -205,9 +294,11 @@ if __name__ == "__main__":
                 ),
             )
 
-            task_prepare_database_config >> generate_blazegraph_volume_task >> [task_blazegraph,
-                                     task_converg_condensed, task_converg_flat] >> task_services_removal
+            task_prepare_database_config >> generate_blazegraph_volume_task >> generate_jena_volume_task >> [task_blazegraph, task_jena,
+                                     task_converg_condensed, task_converg_flat,] >> task_services_removal
             
             task_blazegraph >> task_log_blazegraph_bigdata_space
+
+            task_jena >> task_log_jena_space
 
         wt.create()
