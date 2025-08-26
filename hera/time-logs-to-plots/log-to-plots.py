@@ -26,7 +26,7 @@ def get_component_name(component: str):
     return '-'.join(component_parts)
 
 
-def extract_log_info(log_file_path: str):
+def extract_log_info(log_file_path: str, min_count_version: int, min_count_component: int, min_repeat: int):
     # Définir une expression régulière pour correspondre au format du log
     log_pattern = r'\{"component":"(?P<component>[^"]+)","query":"(?P<query>[^"]+)","try":"(?P<try>[^"]+)","duration":"(?P<duration>[^"]+)","version":"(?P<version>[^"]+)","product":"(?P<product>[^"]+)","step":"(?P<step>[^"]+)","time":"(?P<time>[^"]+)"\}'
     extracted_data = []
@@ -58,10 +58,6 @@ def extract_log_info(log_file_path: str):
                     "TIME": time_unix,
                     "COMPONENT_NAME": get_component_name(component)
                 })
-
-    min_repeat = int(os.getenv("COUNT_REPEAT", 200))
-    min_count_version = int(os.getenv("COUNT_VERSION", 3))
-    min_count_component = int(os.getenv("COUNT_COMPONENT", 3))
 
     extracted_data = remove_all_with_less_than_repeat(data=extracted_data, repeat=min_repeat)
     print(f"After remove_all_with_less_than_repeat: {len(extracted_data)}")
@@ -495,14 +491,22 @@ def store_data_to_json(data, file_path):
 
 if __name__ == "__main__":
     # Afficher les informations extraites
+    min_repeat = int(os.getenv("COUNT_REPEAT", 200))
+    min_count_version = int(os.getenv("COUNT_VERSION", 3))
+    min_count_component = int(os.getenv("COUNT_COMPONENT", 3))
 
     log_file_path = os.getenv("LOG_FILE_PATH")
     if not log_file_path:
         raise EnvironmentError(
             "LOG_FILE_PATH environment variable is not set.")
 
-    log_data = extract_log_info(log_file_path)
-    
+    print(f"Log file path: {log_file_path}")
+    print(f"Minimum repeat: {min_repeat}")
+    print(f"Minimum count version: {min_count_version}")
+    print(f"Minimum count component: {min_count_component}")
+
+    log_data = extract_log_info(log_file_path, min_count_version, min_count_component, min_repeat)
+
     store_data_to_json(data=log_data, file_path="log_data.json")
 
     for scale in ["linear", "log"]:

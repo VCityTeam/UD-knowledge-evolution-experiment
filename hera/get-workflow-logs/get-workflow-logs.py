@@ -44,9 +44,13 @@ def merge_all_thematic_logs_files(workflow_id, datadir, thematic):
 
     with open(datadir + workflow_id + "/" + thematic + "/merged_logs.log", "w") as outfile:
         for log_file in log_files:
-            with open(log_file) as infile:
-                outfile.write(infile.read())
-                outfile.write("\n")
+            with open(log_file, "rb") as infile:
+                content = infile.read()
+                try:
+                    outfile.write(content.decode("utf-8"))
+                    outfile.write("\n")
+                except UnicodeDecodeError:
+                    print("Error decoding log file:", log_file)
     print(f"Merged {len(log_files)} logs files into {datadir + workflow_id + "/" + thematic}/merged_logs.log")
 
 if __name__ == "__main__":
