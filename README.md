@@ -1,13 +1,25 @@
 # Project Documentation
 
-## Overview
-This project is designed to store the experiment metrics.
+This repository publishes the workflow (both shell and Python-based) for benchmarking Versioned Triple Stores. It provides scripts and workflow definitions to automate dataset generation, transformation, loading, and querying, enabling reproducible and extensible benchmarking experiments.
 
-## Usage
-To use the project, follow these steps:
-1. Create a postgresql database.
-2. Use the provided SQL script to create the schema.
-3. <python part>
+## Shell workflow
+
+There are two shell workflows available:
+
+- `shell/workflow-bsbm.sh`: Runs the workflow using versioned BSBM dataset.
+- `shell/workflow-gratte_ciel.sh`: Runs the workflow using the Gratte Ciel dataset.
+
+Each script will:
+1. Start the required services using Docker Compose.
+2. Create or download the appropriate dataset.
+3. Import the dataset into the services for benchmarking.
+
+To execute a workflow, run:
+```sh
+bash ./shell/workflow-bsbm.sh
+# or
+bash ./shell/workflow-gratte_ciel.sh
+```
 
 ## Hera workflow
     

@@ -51,7 +51,7 @@ if __name__ == "__main__":
                 mount_path="/app/data",
             )],
             image_pull_policy=ImagePullPolicy.if_not_present,
-            args=["generate-n", "{{inputs.parameters.version}}", "{{inputs.parameters.product}}", "{{inputs.parameters.step}}"],
+            args=["generate-n", "-v {{inputs.parameters.version}}", "-p {{inputs.parameters.product}}", "-s {{inputs.parameters.step}}", "-f ttl"],
         )
 
         relational_transformer = Container(

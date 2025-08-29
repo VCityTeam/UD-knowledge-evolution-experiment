@@ -241,7 +241,7 @@ class datasets:
                 name=bsbm_container_name,
                 image=constants.bsbm,
                 image_pull_policy=models.ImagePullPolicy.if_not_present,
-                args=["generate-n", configuration.version, configuration.product, configuration.step],
+                args=["generate-n", f" -v {configuration.version}", f"-p {configuration.product}", f"-s {configuration.step}", "-f ttl"],
                 volumes=[volume_mount],
                 resources=Resources(memory_request=f"{constants.memory_request}Gi", memory_limit=f"{constants.memory_limit}Gi", cpu_limit=constants.cpu_limit)
             )
