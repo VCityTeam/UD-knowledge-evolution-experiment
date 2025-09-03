@@ -11,7 +11,7 @@ from hera.workflows import (
     UserContainer,
 )
 from hera.shared import global_config
-from hera.workflows.models import Toleration, Arguments, Parameter, ValueFrom, ImagePullPolicy, SecurityContext, PodSecurityContext
+from hera.workflows.models import Toleration, Arguments, Parameter, ValueFrom, ImagePullPolicy, SecurityContext, PodSecurityContext, RetryStrategy, IntOrString
 from experiment_constants import constants
 from experiment_utils import create_service_manifest, create_cleanup_config
 import os
@@ -92,6 +92,7 @@ def create_theoretical_dataset_importer(
                                 url,
                                 headers={'Content-Type': 'application/trig'},
                                 data=f.read(),
+                                timeout=18000  # 5 hours in seconds
                             )
                             response.raise_for_status()
                     except requests.exceptions.RequestException as e:
@@ -116,6 +117,10 @@ if __name__ == "__main__":
         entrypoint="jena-dag",
         tolerations=[Toleration(
             key="gpu", operator="Exists", effect="PreferNoSchedule")],
+        retry_strategy=RetryStrategy(
+            limit=IntOrString(__root__=3),
+            retry_policy="Always"
+        ),
         arguments=Arguments(parameters=[
             Parameter(name="version",
                       description="Number of versions"),
