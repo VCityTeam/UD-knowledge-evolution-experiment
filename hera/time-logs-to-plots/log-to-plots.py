@@ -26,10 +26,13 @@ def get_component_name(component: str):
     return '-'.join(component_parts)
 
 
-def extract_log_info(log_file_path: str, min_count_version: int, min_count_component: int, min_repeat: int):
+def extract_log_info(log_file_path: str, queries_info: str, min_count_version: int, min_count_component: int, min_repeat: int):
     # Définir une expression régulière pour correspondre au format du log
     log_pattern = r'\{"component":"(?P<component>[^"]+)","query":"(?P<query>[^"]+)","try":"(?P<try>[^"]+)","duration":"(?P<duration>[^"]+)","version":"(?P<version>[^"]+)","product":"(?P<product>[^"]+)","step":"(?P<step>[^"]+)","time":"(?P<time>[^"]+)"\}'
     extracted_data = []
+    
+    with open(queries_info, 'r') as f:
+        queries_configuration = json.load(f)
 
     # Lire le fichier de logs
     with open(log_file_path, 'r') as file:
@@ -37,10 +40,13 @@ def extract_log_info(log_file_path: str, min_count_version: int, min_count_compo
             # Chercher les correspondances avec le pattern
             match = re.search(log_pattern, line)
             if match:
+                query_name = f"query-{match.group('query').split('-')[-1].split('.')[0]}"
+                query_info = queries_configuration.get(query_name)
+
                 # Extraire COMPONENT, DURATION, et FILE
                 component = match.group('component')
                 # keep only the number of the query
-                query = f"query-{match.group('query').split('-')[-1].split('.')[0]}"
+                query = query_name
                 nb_try = int(match.group('try'))
                 version_conf = int(match.group('version'))
                 step_conf = int(match.group('step'))
@@ -56,7 +62,8 @@ def extract_log_info(log_file_path: str, min_count_version: int, min_count_compo
                     "QUERY": query,
                     "TRY": nb_try,
                     "TIME": time_unix,
-                    "COMPONENT_NAME": get_component_name(component)
+                    "COMPONENT_NAME": get_component_name(component),
+                    "AGGREGATIVE": query_info["aggregative"] if query_info else None
                 })
 
     extracted_data = remove_all_with_less_than_repeat(data=extracted_data, repeat=min_repeat)
@@ -205,32 +212,32 @@ def whisker_duration_per_component_query_config(data, scale="linear", limit=None
         plt.close(fig)
 
 
-def create_duration_average_plot(data, scale="linear", limit=None):
+def create_duration_median_plot(data, scale="linear", limit=None):
     import pandas as pd
     import matplotlib.pyplot as plt
     
-    print("Starting to create average duration plots.")
+    print("Starting to create median duration plots.")
 
     # Read the uploaded JSON file into a pandas DataFrame
     # Use the file handle provided by the environment
     df = pd.DataFrame(data)
     if limit is not None:
         df = df[df['TRY'] >= limit]
-    output_dir = f'plots/average_duration/{scale}'
+    output_dir = f'plots/median_duration/{scale}'
     os.makedirs(output_dir, exist_ok=True)
 
     # Define the columns that identify a unique configuration
     config_cols = ['STEP', 'QUERY', 'COMPONENT_NAME']
 
-    # --- Step 1: Calculate mean duration for each version within each configuration ---
-    mean_duration_per_version = df.groupby(
-        config_cols + ['VERSION'])['DURATION (ms)'].mean().reset_index()
-    mean_duration_per_version.rename(
-        columns={'DURATION (ms)': 'MEAN_DURATION_CONFIG'}, inplace=True)
+    # --- Step 1: Calculate median duration for each version within each configuration ---
+    median_duration_per_version = df.groupby(
+        config_cols + ['VERSION'])['DURATION (ms)'].median().reset_index()
+    median_duration_per_version.rename(
+        columns={'DURATION (ms)': 'MEDIAN_DURATION_CONFIG'}, inplace=True)
 
     # --- Step 2: Prepare for plotting ---
     # Get unique configurations
-    unique_configs = mean_duration_per_version[config_cols].drop_duplicates().values.tolist()
+    unique_configs = median_duration_per_version[config_cols].drop_duplicates().values.tolist()
     num_unique_configs = len(unique_configs)
     print(
         f"Found {num_unique_configs} unique configurations based on {config_cols}.")
@@ -264,9 +271,9 @@ def create_duration_average_plot(data, scale="linear", limit=None):
                 config_cols = ['STEP', 'QUERY', 'COMPONENT_NAME']
                 # Create a tuple for the current configuration
                 config = [step, query, component]
-                config_filter = (mean_duration_per_version[config_cols] == pd.Series(
+                config_filter = (median_duration_per_version[config_cols] == pd.Series(
                     config, index=config_cols)).all(axis=1)
-                plot_data = mean_duration_per_version[config_filter].sort_values(by='VERSION')
+                plot_data = median_duration_per_version[config_filter].sort_values(by='VERSION')
 
                 # Assign color based on component name
                 if component.startswith('blazegraph'):
@@ -278,7 +285,7 @@ def create_duration_average_plot(data, scale="linear", limit=None):
                 else:
                     color = 'green'
 
-                ax.plot(plot_data['VERSION'], plot_data['MEAN_DURATION_CONFIG'],
+                ax.plot(plot_data['VERSION'], plot_data['MEDIAN_DURATION_CONFIG'],
                         marker='o', linestyle='-', label=component, color=color)
 
             # Set title and labels
@@ -286,10 +293,10 @@ def create_duration_average_plot(data, scale="linear", limit=None):
             title_str = f"Step: {step}, Query: {query}"
             ax.set_title(title_str, fontsize=9)
             ax.set_xlabel("Version")
-            ax.set_ylabel("Mean Duration (ms)")
+            ax.set_ylabel("Median Duration (ms)")
             if scale == "log":
                 ax.set_yscale("log")
-                ax.set_ylabel("Mean Duration Log(ms)")
+                ax.set_ylabel("Median Duration Log(ms)")
 
             ax.grid(True)
             # Add legend to the plot
@@ -300,7 +307,7 @@ def create_duration_average_plot(data, scale="linear", limit=None):
 
             # --- Create a safe filename for the plot ---
             os.makedirs(f"{output_dir}/{step}", exist_ok=True)
-            filepath = f"{output_dir}/{step}/duration_average_{query}.png"
+            filepath = f"{output_dir}/{step}/duration_median_{query}.png"
             plt.savefig(filepath, dpi=300)
             plt.close(fig)
 
@@ -488,29 +495,170 @@ def store_data_to_json(data, file_path):
     """
     with open(file_path, 'w') as f:
         json.dump(data, f)
+        
+def check_shapiro_wilk_test(data: list, warmup: int):
+    import pandas as pd
+    from scipy import stats
+    
+    print("The Shapiro-Wilk test is a statistical test used to determine whether a sample comes from a normally distributed population.")   
+    print("This means that the data does not significantly deviate from a normal distribution.") 
+
+    df = pd.DataFrame(data)
+    
+    results = []
+    
+    # Remove warmup tries
+    df = df[df['TRY'] > warmup]
+    
+    grouped = df.groupby(['STEP', 'QUERY', 'COMPONENT_NAME', 'VERSION'])
+
+    for name, group in grouped:
+        step, query, component, version = name
+        if len(group) < 2:
+            print(f"Not enough data for statistical test for {step, query, component, version}")
+            continue
+        # Perform Shapiro-Wilk test for normality
+        grouped_data = group['DURATION (ms)']
+        stat, p_value = stats.shapiro(grouped_data)
+        alpha = 0.05
+        if p_value > alpha:
+            print(f"Data for {step, query, component, version} is normally distributed (p={p_value:.3f})")
+            
+        results.append({
+            'STEP': int(step),
+            'QUERY': query,
+            'VERSION': int(version),
+            'COMPONENT_NAME': component,
+            'W_STATISTIC': stat,
+            'P_VALUE': p_value,
+            'NORMALLY_DISTRIBUTED': str(p_value > alpha),
+            'MEAN': grouped_data.mean(),
+            'MEDIAN': grouped_data.median(),
+            '75TH_PERCENTILE': grouped_data.quantile(0.75),
+            '95TH_PERCENTILE': grouped_data.quantile(0.95),
+        })
+        
+    # save results to a json file
+    with open('shapiro_wilk_test_results.json', 'w') as f:
+        json.dump(results, f, indent=4)
+        
+    return results
+            
+def check_Mann_Whitney_U_test(data: list, warmup: int):
+    import pandas as pd
+    from scipy import stats
+    from itertools import combinations
+    
+    print("Mann-Whitney U test is a non-parametric test used to determine whether there is a significant difference between the distributions of two independent samples.")
+    print("No significant difference between comp1 and comp2 for the given step, query, and version, meaning the statistical test did not find strong evidence that the two are different.")
+    print("Significant difference between comp1 and comp2 for the given step, query, and version, meaning the statistical test found strong evidence that the two are different.")
+
+    df = pd.DataFrame(data)
+    
+    results = []
+    
+    # Remove warmup tries
+    df = df[df['TRY'] > warmup]
+    
+    grouped = df.groupby(['STEP', 'QUERY', 'VERSION'])
+
+    for name, group in grouped:
+        step, query, version = name
+        components = group['COMPONENT_NAME'].unique()
+        if len(components) < 2:
+            print(f"Not enough components for statistical test for {step, query, version}")
+            continue
+        
+        for comp1, comp2 in combinations(components, 2):
+            data1 = group[group['COMPONENT_NAME'] == comp1]['DURATION (ms)']
+            data2 = group[group['COMPONENT_NAME'] == comp2]['DURATION (ms)']
+            if len(data1) < 2 or len(data2) < 2:
+                print(f"Not enough data for Mann-Whitney U test between {comp1} and {comp2} for {step, query, version}")
+                continue
+            stat, p_value = stats.mannwhitneyu(data1, data2, alternative='two-sided')
+            
+            alpha = 0.05
+            if p_value <= alpha:
+                print(f"Significant difference between {comp1} and {comp2} for {step, query, version} (p={p_value:.3f})")
+                
+            results.append({
+                'STEP': int(step),
+                'QUERY': query,
+                'VERSION': int(version),
+                'COMPONENT_1': comp1,
+                'COMPONENT_2': comp2,
+                'U_STATISTIC': stat,
+                'P_VALUE': p_value,
+                'SIGNIFICANT': str(p_value <= alpha)
+            })
+
+    # save results to a json file
+    with open('mann_whitney_u_test_results.json', 'w') as f:
+        json.dump(results, f, indent=4)
+        
+    return results
+
+def create_shapiro_wilk_test_table(results: list):
+    import pandas as pd
+    
+    df = pd.DataFrame(results)
+    
+    # Create a pivot table as before
+    df = df.pivot_table(index=['STEP', 'QUERY', 'VERSION'],
+                        columns='COMPONENT_NAME',
+                        values=['MEAN', 'MEDIAN', '75TH_PERCENTILE', '95TH_PERCENTILE'],
+                        aggfunc='first')
+
+    # Prepare multi-level columns: first row is component, second row is statistic
+    df.columns = pd.MultiIndex.from_tuples([(comp, stat) for stat, comp in df.columns])
+
+    # Sort columns by component_name (first level)
+    df = df.sort_index(axis=1, level=0)
+
+    # Reset index for saving to CSV
+    df.reset_index(inplace=True)
+
+    # Save with multi-level columns
+    df.to_csv('shapiro_wilk_test_results.csv', index=False, index_label=['STEP', 'QUERY', 'VERSION'], header=True)
+    
+    print("Shapiro-Wilk test results saved to shapiro_wilk_test_results.csv")
+    
 
 if __name__ == "__main__":
     # Afficher les informations extraites
     min_repeat = int(os.getenv("COUNT_REPEAT", 200))
     min_count_version = int(os.getenv("COUNT_VERSION", 3))
     min_count_component = int(os.getenv("COUNT_COMPONENT", 3))
+    mode = os.getenv("MODE", "stats")
 
     log_file_path = os.getenv("LOG_FILE_PATH")
     if not log_file_path:
         raise EnvironmentError(
             "LOG_FILE_PATH environment variable is not set.")
+        
+    queries_info = os.getenv("QUERIES_CONFIGURATION", "time-logs-to-plots/queries_configuration.json")
 
     print(f"Log file path: {log_file_path}")
     print(f"Minimum repeat: {min_repeat}")
     print(f"Minimum count version: {min_count_version}")
     print(f"Minimum count component: {min_count_component}")
 
-    log_data = extract_log_info(log_file_path, min_count_version, min_count_component, min_repeat)
+    log_data = extract_log_info(log_file_path, queries_info, min_count_version, min_count_component, min_repeat)
 
     store_data_to_json(data=log_data, file_path="log_data.json")
+    
+    if mode == "plots" or mode == "all":
+        for scale in ["linear", "log"]:
+            whisker_duration_per_component_query_config(data=log_data, scale=scale, limit=50)
+            create_duration_median_plot(data=log_data, scale=scale, limit=50)
 
-    for scale in ["linear", "log"]:
-        whisker_duration_per_component_query_config(data=log_data, scale=scale, limit=50)
-        create_duration_average_plot(data=log_data, scale=scale, limit=50)
-
-    create_version_normalized_duration_plot(data=log_data, limit=50)
+        create_version_normalized_duration_plot(data=log_data, limit=50)
+        
+    if mode == "stats" or mode == "all":
+        print("------------------- P-Value Test (Shapiro-Wilk) -------------------")
+        shapiro_wilk_test_results = check_shapiro_wilk_test(data=log_data, warmup=20)
+        print("------------------- Mann-Whitney U Test -------------------")
+        mann_whitney_u_test_results = check_Mann_Whitney_U_test(data=log_data, warmup=20)
+    
+        print("Creating statistical test tables in CSV format.")
+        create_shapiro_wilk_test_table(shapiro_wilk_test_results)

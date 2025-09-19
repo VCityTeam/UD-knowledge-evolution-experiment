@@ -1,0 +1,87 @@
+{
+    "query-01": {
+        "description": "Quad pattern, LIMIT 1000",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s ?p ?o } } LIMIT 1000"
+    },
+    "query-02": {
+        "description": "Triple pattern, LIMIT 1000",
+        "aggregative": false,
+        "query": "SELECT * WHERE { ?s ?p ?o } LIMIT 1000"
+    },
+    "query-03": {
+        "description": "Quad pattern, fixed subject",
+        "aggregative": false,
+        "query": "SELECT ?g ?p ?o WHERE { GRAPH ?g { <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature287> ?p ?o . } }"
+    },
+    "query-04": {
+        "description":"Basic graph pattern, fixed subject, join on subject",
+        "aggregative": false,
+        "query": "SELECT ?g ?p ?o WHERE { GRAPH ?g { <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature287> ?p ?o ; ?p2 ?o2 . } }"
+    },
+    "query-05": {
+        "description": "Basic graph pattern, fixed subject, join on subject and predicate",
+        "aggregative": false,
+        "query": "SELECT ?graph ?predicate ?object ?object2 WHERE { GRAPH ?graph { <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature287> ?predicate ?object , ?object2 . } }"
+    },
+    "query-06": {
+        "description": "Basic graph pattern, fixed subject and graph, join on subject",
+        "aggregative": false,
+        "query": "SELECT ?p ?o WHERE { GRAPH <https://github.com/VCityTeam/ConVer-G/Versioned-Named-Graph#e7d928899d898334c4663b1886636f62bd0c65b997dbcc75dea926fb61a8d7bd0ae4a9fda189bfdba54b994811a8366a2b55b3a5860676ec873d7743db429831> { <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature287> ?p ?o ; ?p2 ?o2 . } }"
+    },
+    "query-07": {
+        "description": "Join (Basic graph pattern, fixed subject, join on subject), (Triple pattern, fixed predicate) on graph=subject",
+        "aggregative": false,
+        "query": "SELECT ?graph ?p1 ?o1 ?o2 WHERE { GRAPH ?vg { <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature287> ?p1 ?o1 ; ?p2 ?o2 . } ?vg <https://github.com/VCityTeam/ConVer-G/Version#is-version-of> ?graph . }"
+    },
+    "query-08": {
+        "description": "Join (Basic graph pattern, fixed subject, join on subject, fixed predicate2), (Triple pattern, fixed predicate) on graph=subject",
+        "aggregative": false,
+        "query": "SELECT ?version ?p1 ?o1 ?type WHERE { GRAPH ?vg { <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature287> ?p1 ?o1 ; a ?type . } ?vg <https://github.com/VCityTeam/ConVer-G/Version#is-in-version> ?version . }"
+    },
+    "query-09": {
+        "description": "MAX object2 by graph(Basic graph pattern, fixed predicate and object and predicate2, join on subject)",
+        "aggregative": true,
+        "query": "PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> SELECT ?vg (MAX(?rating) as ?maxrating) WHERE { GRAPH ?vg { ?s a bsbm:Review ; bsbm:rating3 ?rating . } } GROUP BY ?vg"
+    },
+    "query-10": {
+        "description": "COUNT object by object2 (Join (Basic graph pattern, fixed predicate and object and predicate2, join on subject), (Triple pattern, fixed predicate) on graph=subject)",
+        "aggregative": true,
+        "query": "PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX vers: <https://github.com/VCityTeam/ConVer-G/Version#> SELECT ?graph (COUNT(?rating) as ?countrating) WHERE { GRAPH ?vg { ?s a bsbm:Review ; bsbm:rating3 ?rating . } ?vg vers:is-version-of ?graph . } GROUP BY ?graph"
+    },
+    "query-11": {
+        "description": "AVG object by object2 (Join (Basic graph pattern, fixed predicate and object and predicate2, join on subject), (Triple pattern, fixed predicate) on graph=subject)",
+        "aggregative": true,
+        "query": "PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX vers: <https://github.com/VCityTeam/ConVer-G/Version#> SELECT ?version (AVG(?rating) as ?avgrating) WHERE { GRAPH ?vg { ?s a bsbm:Review ; bsbm:rating3 ?rating . } ?vg vers:is-in-version ?version . } GROUP BY ?version"
+    },
+    "query-12": {
+        "description": "Join (Quad pattern, fixed predicate), (Optional Quad pattern, fixed predicate) on subject=subject",
+        "aggregative": false,
+        "query": "PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>\n\nSELECT ?vg ?s ?type ?rating WHERE {\n    GRAPH ?vg {\n        ?s a ?type .\n        OPTIONAL {\n            ?s bsbm:rating3 ?rating .\n        }\n    }\n}"
+    },
+    "query-13": {
+        "description": "Quad pattern, fixed predicate, filter on object",
+        "aggregative": false,
+        "query": "PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>\n\nSELECT ?vg ?s ?rating WHERE {\n    GRAPH ?vg {\n      ?s bsbm:rating3 ?rating .\n      FILTER(?rating > 4)\n    }\n}"
+    },
+    "query-14": {
+        "description": "COUNT object (Triple pattern, fixed predicate)",
+        "aggregative": true,
+        "query": "PREFIX vers: <https://github.com/VCityTeam/ConVer-G/Version#>\n\nSELECT (COUNT(?version) as ?countversion) WHERE {\n        ?vg vers:is-in-version ?version .\n}"
+    },
+    "query-15": {
+        "description": "COUNT object (Triple pattern, fixed predicate)",
+        "aggregative": true,
+        "query": "PREFIX vers: <https://github.com/VCityTeam/ConVer-G/Version#>\n\nSELECT (COUNT(?graph) as ?countgraph) WHERE {\n    ?vg vers:is-version-of ?graph .\n}"
+    },
+    "query-16": {
+        "description": "MAX object by graph (Quad pattern fixed predicate)",
+        "aggregative": true,
+        "query": "PREFIX building: <http://example.edu/Building#>\nPREFIX schema: <http://schema.org/>\nPREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>\n\nSELECT ?graph (MAX(?rating) AS ?maxrating) WHERE {\n    GRAPH ?graph {\n      ?s bsbm:rating3 ?rating .\n    }\n} GROUP BY ?graph"
+    },
+    "query-17": {
+        "description": "COUNT subject by object2 (Basic graph pattern, fixed predicate and object and predicate2, join on subject)",
+        "aggregative": true,
+        "query": "PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>\nSELECT ?rating (COUNT(?s) as ?counts) WHERE {\n  GRAPH ?vg {\n      ?s a bsbm:Review ;\n\t\t\tbsbm:rating3 ?rating .\n  }\n} GROUP BY ?rating"
+    }
+}
