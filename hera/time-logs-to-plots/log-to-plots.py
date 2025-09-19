@@ -673,10 +673,9 @@ def highlight_quaque_csv(filename: str):
                 idx = row.index.get_loc(q_col)
                 styles[idx] = 'background-color: #90ee90'
                 column_name = q_col[1]
-                if column_name == 'MEAN':
+                if column_name == 'MEDIAN':
                     # Bold the line if quaque-condensed mean column is lower than other components mean
                     other_vals = [row[o_col] for o_col in other_stat_cols if pd.notnull(row[o_col])]
-                    print (f"Other values for comparison: {other_stat_cols}")
                     if all(q_val < o_val for o_val in other_vals if pd.notnull(o_val)):
                         styles = ['font-weight: bold;' if s == '' else s + '; font-weight: bold;' for s in styles]
                     
