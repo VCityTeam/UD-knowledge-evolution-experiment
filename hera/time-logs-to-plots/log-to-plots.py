@@ -601,6 +601,8 @@ def check_Mann_Whitney_U_test(data: list, warmup: int):
 def create_shapiro_wilk_test_table(results: list):
     import pandas as pd
     
+    filename = 'shapiro_wilk_test_results.csv'
+    
     df = pd.DataFrame(results)
     
     # Create a pivot table as before
@@ -619,9 +621,73 @@ def create_shapiro_wilk_test_table(results: list):
     df.reset_index(inplace=True)
 
     # Save with multi-level columns
-    df.to_csv('shapiro_wilk_test_results.csv', index=False, index_label=['STEP', 'QUERY', 'VERSION'], header=True)
+    df.to_csv(filename, index=False, index_label=['STEP', 'QUERY', 'VERSION'], header=True)
     
     print("Shapiro-Wilk test results saved to shapiro_wilk_test_results.csv")
+    
+    return filename
+
+def highlight_quaque_csv(filename: str):
+    import pandas as pd
+
+    df = pd.read_csv(filename, header=[0, 1])
+
+    def highlight_and_bold_quaque(row):
+        # Find all 'quaque-condensed' columns
+        quaque_condensed_cols = [col for col in row.index if col[0].startswith('quaque-condensed')]
+        # Find all 'quaque-flat' columns
+        quaque_flat_cols = [col for col in row.index if col[0].startswith('quaque-flat')]
+        # Find all 'jena' columns
+        jena_cols = [col for col in row.index if col[0].startswith('jena')]
+        # Find all 'blazegraph' columns
+        blazegraph_cols = [col for col in row.index if col[0].startswith('blazegraph')]
+        
+        # Find all other component columns
+        other_cols = [col for col in row.index if not col[0].startswith('quaque-condensed')]
+        styles = [''] * len(row)
+        # For each statistic, check if any quaque value is lower than all others (for MEAN, MEDIAN, etc.)
+        for stat in ['MEAN', 'MEDIAN', '75TH_PERCENTILE', '95TH_PERCENTILE']:
+            quaque_condensed_stat_cols = [col for col in quaque_condensed_cols if col[1] == stat]
+            quaque_flat_stat_cols = [col for col in quaque_flat_cols if col[1] == stat]
+            jena_stat_cols = [col for col in jena_cols if col[1] == stat]
+            blazegraph_stat_cols = [col for col in blazegraph_cols if col[1] == stat]
+            other_stat_cols = [col for col in other_cols if col[1] == stat]
+            
+            for b_col in blazegraph_stat_cols:
+                other_vals = [row[o_col] for o_col in other_stat_cols if pd.notnull(row[o_col])]
+                idx = row.index.get_loc(b_col)
+                styles[idx] = 'background-color: #B3D8F8'
+            
+            for j_col in jena_stat_cols:
+                other_vals = [row[o_col] for o_col in other_stat_cols if pd.notnull(row[o_col])]
+                idx = row.index.get_loc(j_col)
+                styles[idx] = 'background-color: #E6E6FA'
+            
+            for q_col in quaque_flat_stat_cols:
+                other_vals = [row[o_col] for o_col in other_stat_cols if pd.notnull(row[o_col])]
+                idx = row.index.get_loc(q_col)
+                styles[idx] = 'background-color: #FFD580'
+            
+            for q_col in quaque_condensed_stat_cols:
+                q_val = row[q_col]
+                idx = row.index.get_loc(q_col)
+                styles[idx] = 'background-color: #90ee90'
+                column_name = q_col[1]
+                if column_name == 'MEAN':
+                    # Bold the line if quaque-condensed mean column is lower than other components mean
+                    other_vals = [row[o_col] for o_col in other_stat_cols if pd.notnull(row[o_col])]
+                    print (f"Other values for comparison: {other_stat_cols}")
+                    if all(q_val < o_val for o_val in other_vals if pd.notnull(o_val)):
+                        styles = ['font-weight: bold;' if s == '' else s + '; font-weight: bold;' for s in styles]
+                    
+        return styles
+
+    styled_df = df.style.apply(highlight_and_bold_quaque, axis=1)
+
+    styled_filename = filename.replace('.csv', '_highlighted.html')
+    styled_df.to_html(styled_filename)
+
+    print(f"Highlighted table saved to {styled_filename}")
     
 
 if __name__ == "__main__":
@@ -661,4 +727,6 @@ if __name__ == "__main__":
         mann_whitney_u_test_results = check_Mann_Whitney_U_test(data=log_data, warmup=20)
     
         print("Creating statistical test tables in CSV format.")
-        create_shapiro_wilk_test_table(shapiro_wilk_test_results)
+        filename = create_shapiro_wilk_test_table(shapiro_wilk_test_results)
+        
+        highlight_quaque_csv(filename)

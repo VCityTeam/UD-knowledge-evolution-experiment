@@ -2,3 +2,4 @@ matplotlib
 mpl-tools
 pandas
 scipy
+jinja2
