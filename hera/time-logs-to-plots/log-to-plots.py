@@ -3,6 +3,8 @@ import re
 import os
 
 
+# --- Utility Functions ---
+
 def get_component_name(component: str):
     """
     Extracts the component name from a given string.
@@ -27,10 +29,13 @@ def get_component_name(component: str):
 
 
 def extract_log_info(log_file_path: str, queries_info: str, min_count_version: int, min_count_component: int, min_repeat: int):
+    """
+    Extracts log information from a log file and filters it based on repeat, version, and component counts.
+    """
     # Définir une expression régulière pour correspondre au format du log
     log_pattern = r'\{"component":"(?P<component>[^"]+)","query":"(?P<query>[^"]+)","try":"(?P<try>[^"]+)","duration":"(?P<duration>[^"]+)","version":"(?P<version>[^"]+)","product":"(?P<product>[^"]+)","step":"(?P<step>[^"]+)","time":"(?P<time>[^"]+)"\}'
     extracted_data = []
-    
+
     with open(queries_info, 'r') as f:
         queries_configuration = json.load(f)
 
@@ -66,79 +71,59 @@ def extract_log_info(log_file_path: str, queries_info: str, min_count_version: i
                     "AGGREGATIVE": query_info["aggregative"] if query_info else None
                 })
 
-    extracted_data = remove_all_with_less_than_repeat(data=extracted_data, repeat=min_repeat)
+    extracted_data = remove_all_with_less_than_repeat(extracted_data, min_repeat)
     print(f"After remove_all_with_less_than_repeat: {len(extracted_data)}")
-    extracted_data = remove_all_with_less_than_count_version(data=extracted_data, count=min_count_version)
+    extracted_data = remove_all_with_less_than_count_version(extracted_data, min_count_version)
     print(f"After remove_all_with_less_than_count_version: {len(extracted_data)}")
-    extracted_data = remove_all_with_less_than_count_component(data=extracted_data, count=min_count_component)
+    extracted_data = remove_all_with_less_than_count_component(extracted_data, min_count_component)
     print(f"After remove_all_with_less_than_count_component: {len(extracted_data)}")
-
     return extracted_data
+
 
 def remove_all_with_less_than_repeat(data, repeat=200):
     """
-    Group by VERSION, STEP, QUERY and
-    remove all entries from data when the max TRY is less than repeat
+    Remove entries where the max TRY for (VERSION, STEP, QUERY) is less than repeat.
     """
     import pandas as pd
     df = pd.DataFrame(data)
-    
     max_lower_than_repeat = []
     for name, group in df.groupby(['VERSION', 'STEP', 'QUERY']):
-        max_try = group['TRY'].max()
-        if max_try < repeat:
+        if group['TRY'].max() < repeat:
             max_lower_than_repeat.append(name)
-
-    # Remove all entries from data have the same VERSION, STEP, QUERY in max_lower_than_repeat
-    for name in max_lower_than_repeat:
-        version, step, query = name
+    for version, step, query in max_lower_than_repeat:
         df = df[~((df['VERSION'] == version) & (df['STEP'] == step) & (df['QUERY'] == query))]
-
     return df.to_dict(orient='records')
+
 
 def remove_all_with_less_than_count_version(data, count=4):
     """
-    Group by STEP, QUERY, COMPONENT and
-    remove all entries from data when the count of version is less than count
+    Remove entries where the count of unique versions for (STEP, QUERY, COMPONENT_NAME) is less than count.
     """
     import pandas as pd
     df = pd.DataFrame(data)
-    
-    # Count the number of unique versions for each group
     version_counts = df.groupby(['STEP', 'QUERY', 'COMPONENT_NAME'])['VERSION'].nunique().reset_index()
     version_counts.rename(columns={'VERSION': 'COUNT_VERSION'}, inplace=True)
-
-    # Filter groups with less than count unique versions
     groups_to_remove = version_counts[version_counts['COUNT_VERSION'] < count]
-
-    # Remove all entries from data have the same STEP, QUERY in groups_to_remove
     for _, row in groups_to_remove.iterrows():
         step, query, _, _ = row
         df = df[~((df['STEP'] == step) & (df['QUERY'] == query))]
-
     return df.to_dict(orient='records')
+
 
 def remove_all_with_less_than_count_component(data, count=3):
     """
-    Group by STEP, QUERY, VERSION and
-    remove all entries from data when the count of component is less than count
+    Remove entries where the count of unique components for (STEP, QUERY, VERSION) is less than count.
     """
     import pandas as pd
     df = pd.DataFrame(data)
-    
-    # Count the number of unique components for each group
     component_counts = df.groupby(['STEP', 'QUERY', 'VERSION'])['COMPONENT_NAME'].nunique().reset_index()
     component_counts.rename(columns={'COMPONENT_NAME': 'COUNT_COMPONENT'}, inplace=True)
-
-    # Filter groups with less than count unique components
     groups_to_remove = component_counts[component_counts['COUNT_COMPONENT'] < count]
-
-    # Remove all entries from data have the same STEP, QUERY in groups_to_remove
     for _, row in groups_to_remove.iterrows():
         step, query, version, _ = row
         df = df[~((df['STEP'] == step) & (df['QUERY'] == query) & (df['VERSION'] == version))]
-
     return df.to_dict(orient='records')
+
 
 def whisker_duration_per_component_query_config(data, scale="linear", limit=None):
     import pandas as pd
@@ -303,7 +288,8 @@ def create_duration_median_plot(data, scale="linear", limit=None):
             ax.legend(title='Component', loc='upper left')
 
             # Ensure x-axis ticks are integers if versions are integers
-            ax.xaxis.get_major_locator().set_params(integer=True)
+            from matplotlib.ticker import MaxNLocator
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
             # --- Create a safe filename for the plot ---
             os.makedirs(f"{output_dir}/{step}", exist_ok=True)
@@ -442,9 +428,11 @@ def create_version_normalized_duration_plot(data, limit=None):
             title_str = f"Step: {step}: Query: {query}"
             ax.set_title(title_str, fontsize=11)  # Adjusted font size slightly
             ax.set_xlabel("Version")
-            # Updated Y-axis label
-            ax.set_ylabel(
-                "Normalized Duration (Time / Time of Lowest Version)")
+            ax.set_ylabel("Normalized Duration (ms)")
+            if scale == "log":
+                ax.set_yscale("log")
+                ax.set_ylabel("Normalized Duration Log(ms)")
+
             ax.grid(True)
 
             # Add legend only if there are labels to show
@@ -453,11 +441,9 @@ def create_version_normalized_duration_plot(data, limit=None):
                 ax.legend(title='Component', loc='best')
 
             # Ensure x-axis ticks are integers
-            try:  # Added try-except for robustness
-                ax.xaxis.get_major_locator().set_params(integer=True)
-            except AttributeError:
-                print(
-                    f"Warning: Could not set integer ticks for x-axis on plot: {title_str}")
+            # Ensure x-axis ticks are integers
+            from matplotlib.ticker import MaxNLocator
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
             # Set y-axis minimum to 0 for better interpretation, maybe add some padding
             ax.set_ylim(bottom=0)
@@ -485,6 +471,7 @@ def sanitize_filename(name, max_len=100):
     if len(name) > max_len:
         name = name[:max_len]
     return name
+
 
 def store_data_to_json(data, file_path):
     """
@@ -644,7 +631,6 @@ def highlight_and_bold_quaque(row):
     valid_rows = []
 
     styles = [''] * len(row)
-    # For each statistic, check if any quaque value is lower than all others (for MEAN, MEDIAN, etc.)
     for stat in ['MEAN', 'MEDIAN', '75TH_PERCENTILE', '95TH_PERCENTILE']:
         quaque_condensed_stat_cols = [col for col in quaque_condensed_cols if col[1] == stat]
         quaque_flat_stat_cols = [col for col in quaque_flat_cols if col[1] == stat]
@@ -687,6 +673,84 @@ def highlight_and_bold_quaque(row):
 
     return styles
 
+def highlight_each_component(row):
+    import pandas as pd
+    
+     # Find all 'quaque-condensed' columns
+    quaque_condensed_cols = [col for col in row.index if col[0].startswith('quaque-condensed')]
+    # Find all 'quaque-flat' columns
+    quaque_flat_cols = [col for col in row.index if col[0].startswith('quaque-flat')]
+    # Find all 'jena' columns
+    jena_cols = [col for col in row.index if col[0].startswith('jena')]
+    # Find all 'blazegraph' columns
+    blazegraph_cols = [col for col in row.index if col[0].startswith('blazegraph')]
+    # Find all other component columns
+    def get_other_component_cols(component_prefix):
+        return [col for col in row.index if not col[0].startswith(component_prefix)]
+    
+    def get_other_stat_cols(component_prefix):
+        return [col for col in get_other_component_cols(component_prefix) if col[1] == stat]
+    
+    rows_blazegraph_better = []
+    rows_jena_better = []
+    rows_quaque_flat_better = []
+    rows_quaque_condensed_better = []
+    
+    styles = [''] * len(row)
+    for stat in ['MEAN', 'MEDIAN', '75TH_PERCENTILE', '95TH_PERCENTILE']:
+        quaque_condensed_stat_cols = [col for col in quaque_condensed_cols if col[1] == stat]
+        quaque_flat_stat_cols = [col for col in quaque_flat_cols if col[1] == stat]
+        jena_stat_cols = [col for col in jena_cols if col[1] == stat]
+        blazegraph_stat_cols = [col for col in blazegraph_cols if col[1] == stat]
+        
+        for b_col in blazegraph_stat_cols:
+            b_val = row[b_col]
+            other_vals = [row[o_col] for o_col in get_other_stat_cols('blazegraph') if pd.notnull(row[o_col])]
+            if b_col[1] == 'MEDIAN':
+                if all(b_val < o_val for o_val in other_vals if pd.notnull(o_val)):
+                    rows_blazegraph_better.append(row.name)
+        
+        for j_col in jena_stat_cols:
+            j_val = row[j_col]
+            other_vals = [row[o_col] for o_col in get_other_stat_cols('jena') if pd.notnull(row[o_col])]
+            if j_col[1] == 'MEDIAN':
+                if all(j_val < o_val for o_val in other_vals if pd.notnull(o_val)):
+                    rows_jena_better.append(row.name)
+        
+        for q_col in quaque_flat_stat_cols:
+            q_val = row[q_col]
+            other_vals = [row[o_col] for o_col in get_other_stat_cols('quaque-flat') if pd.notnull(row[o_col])]
+            if q_col[1] == 'MEDIAN':
+                if all(q_val < o_val for o_val in other_vals if pd.notnull(o_val)):
+                    rows_quaque_flat_better.append(row.name)
+        
+        for q_col in quaque_condensed_stat_cols:
+            q_val = row[q_col]
+            other_vals = [row[o_col] for o_col in get_other_stat_cols('quaque-condensed') if pd.notnull(row[o_col])]
+            if q_col[1] == 'MEDIAN':
+                if all(q_val < o_val for o_val in other_vals if pd.notnull(o_val)):
+                    rows_quaque_condensed_better.append(row.name)
+                
+    for i in rows_blazegraph_better:
+        for j in range(len(styles)):
+            styles[j] = 'background-color: #B3D8F8;' # Light blue
+                
+    for i in rows_jena_better:
+        for j in range(len(styles)):
+            styles[j] = 'background-color: #E6E6FA;' # Light purple
+                
+    for i in rows_quaque_flat_better:
+        for j in range(len(styles)):
+            styles[j] = 'background-color: #FFD580;' # Light orange
+                
+    for i in rows_quaque_condensed_better:
+        for j in range(len(styles)):
+            styles[j] = 'background-color: #90ee90;' # Light green
+                
+    return styles
+        
+    
+
 def highlight_quaque_csv(filename: str):
     import pandas as pd
 
@@ -696,6 +760,15 @@ def highlight_quaque_csv(filename: str):
     styled_filename = filename.replace('.csv', '_highlighted.html')
     styled_df.to_html(styled_filename)
 
+    print(f"Highlighted table saved to {styled_filename}")
+    
+def highlight_each_component_csv(filename: str):
+    import pandas as pd
+    
+    df = pd.read_csv(filename, header=[0, 1])
+    styled_df = df.style.apply(highlight_each_component, axis=1)
+    styled_filename = filename.replace('.csv', '_highlighted_each_component.html')
+    styled_df.to_html(styled_filename)
     print(f"Highlighted table saved to {styled_filename}")
 
 if __name__ == "__main__":
@@ -738,3 +811,4 @@ if __name__ == "__main__":
         filename = create_shapiro_wilk_test_table(shapiro_wilk_test_results)
         
         highlight_quaque_csv(filename)
+        highlight_each_component_csv(filename)
