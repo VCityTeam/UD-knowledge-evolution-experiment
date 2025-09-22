@@ -6,3 +6,9 @@
 **/*.log
 **/.env
 **/plots
+
+# data
+**log_data.json
+**_test_results.json
+**_test_results.csv
+**_test_results_highlighted.html

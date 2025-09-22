@@ -627,67 +627,76 @@ def create_shapiro_wilk_test_table(results: list):
     
     return filename
 
+def highlight_and_bold_quaque(row):
+    import pandas as pd
+    
+    # Find all 'quaque-condensed' columns
+    quaque_condensed_cols = [col for col in row.index if col[0].startswith('quaque-condensed')]
+    # Find all 'quaque-flat' columns
+    quaque_flat_cols = [col for col in row.index if col[0].startswith('quaque-flat')]
+    # Find all 'jena' columns
+    jena_cols = [col for col in row.index if col[0].startswith('jena')]
+    # Find all 'blazegraph' columns
+    blazegraph_cols = [col for col in row.index if col[0].startswith('blazegraph')]
+    # Find all other component columns
+    not_quaque_condensed_cols = [col for col in row.index if not col[0].startswith('quaque-condensed')]
+    
+    valid_rows = []
+
+    styles = [''] * len(row)
+    # For each statistic, check if any quaque value is lower than all others (for MEAN, MEDIAN, etc.)
+    for stat in ['MEAN', 'MEDIAN', '75TH_PERCENTILE', '95TH_PERCENTILE']:
+        quaque_condensed_stat_cols = [col for col in quaque_condensed_cols if col[1] == stat]
+        quaque_flat_stat_cols = [col for col in quaque_flat_cols if col[1] == stat]
+        jena_stat_cols = [col for col in jena_cols if col[1] == stat]
+        blazegraph_stat_cols = [col for col in blazegraph_cols if col[1] == stat]
+        other_stat_cols = [col for col in not_quaque_condensed_cols if col[1] == stat]
+        
+        for b_col in blazegraph_stat_cols:
+            other_vals = [row[o_col] for o_col in other_stat_cols if pd.notnull(row[o_col])]
+            idx = row.index.get_loc(b_col)
+            styles[idx] = 'background-color: #B3D8F8' # Light blue
+        
+        for j_col in jena_stat_cols:
+            other_vals = [row[o_col] for o_col in other_stat_cols if pd.notnull(row[o_col])]
+            idx = row.index.get_loc(j_col)
+            styles[idx] = 'background-color: #E6E6FA' # Light purple
+        
+        for q_col in quaque_flat_stat_cols:
+            other_vals = [row[o_col] for o_col in other_stat_cols if pd.notnull(row[o_col])]
+            idx = row.index.get_loc(q_col)
+            styles[idx] = 'background-color: #FFD580' # Light orange
+        
+        for q_col in quaque_condensed_stat_cols:
+            q_val = row[q_col]
+            idx = row.index.get_loc(q_col)
+            styles[idx] = 'background-color: #90ee90' # Light green
+            if q_col[1] == 'MEDIAN':
+                other_vals = [row[o_col] for o_col in other_stat_cols if pd.notnull(row[o_col])]
+                if all(q_val < o_val for o_val in other_vals if pd.notnull(o_val)):
+                    valid_rows.append(row.name)
+                    
+    # Bold the lines where quaque-condensed is the best in MEDIAN
+    # Make the row more visible
+    for i in valid_rows:
+        for j in range(len(styles)):
+            if styles[j] != '':
+                styles[j] += '; font-weight: bold; border: 2px solid black'
+            else:
+                styles[j] = 'font-weight: bold; border: 2px solid black'
+
+    return styles
+
 def highlight_quaque_csv(filename: str):
     import pandas as pd
 
     df = pd.read_csv(filename, header=[0, 1])
-
-    def highlight_and_bold_quaque(row):
-        # Find all 'quaque-condensed' columns
-        quaque_condensed_cols = [col for col in row.index if col[0].startswith('quaque-condensed')]
-        # Find all 'quaque-flat' columns
-        quaque_flat_cols = [col for col in row.index if col[0].startswith('quaque-flat')]
-        # Find all 'jena' columns
-        jena_cols = [col for col in row.index if col[0].startswith('jena')]
-        # Find all 'blazegraph' columns
-        blazegraph_cols = [col for col in row.index if col[0].startswith('blazegraph')]
-        
-        # Find all other component columns
-        other_cols = [col for col in row.index if not col[0].startswith('quaque-condensed')]
-        styles = [''] * len(row)
-        # For each statistic, check if any quaque value is lower than all others (for MEAN, MEDIAN, etc.)
-        for stat in ['MEAN', 'MEDIAN', '75TH_PERCENTILE', '95TH_PERCENTILE']:
-            quaque_condensed_stat_cols = [col for col in quaque_condensed_cols if col[1] == stat]
-            quaque_flat_stat_cols = [col for col in quaque_flat_cols if col[1] == stat]
-            jena_stat_cols = [col for col in jena_cols if col[1] == stat]
-            blazegraph_stat_cols = [col for col in blazegraph_cols if col[1] == stat]
-            other_stat_cols = [col for col in other_cols if col[1] == stat]
-            
-            for b_col in blazegraph_stat_cols:
-                other_vals = [row[o_col] for o_col in other_stat_cols if pd.notnull(row[o_col])]
-                idx = row.index.get_loc(b_col)
-                styles[idx] = 'background-color: #B3D8F8'
-            
-            for j_col in jena_stat_cols:
-                other_vals = [row[o_col] for o_col in other_stat_cols if pd.notnull(row[o_col])]
-                idx = row.index.get_loc(j_col)
-                styles[idx] = 'background-color: #E6E6FA'
-            
-            for q_col in quaque_flat_stat_cols:
-                other_vals = [row[o_col] for o_col in other_stat_cols if pd.notnull(row[o_col])]
-                idx = row.index.get_loc(q_col)
-                styles[idx] = 'background-color: #FFD580'
-            
-            for q_col in quaque_condensed_stat_cols:
-                q_val = row[q_col]
-                idx = row.index.get_loc(q_col)
-                styles[idx] = 'background-color: #90ee90'
-                column_name = q_col[1]
-                if column_name == 'MEDIAN':
-                    # Bold the line if quaque-condensed mean column is lower than other components mean
-                    other_vals = [row[o_col] for o_col in other_stat_cols if pd.notnull(row[o_col])]
-                    if all(q_val < o_val for o_val in other_vals if pd.notnull(o_val)):
-                        styles = ['font-weight: bold;' if s == '' else s + '; font-weight: bold;' for s in styles]
-                    
-        return styles
-
     styled_df = df.style.apply(highlight_and_bold_quaque, axis=1)
 
     styled_filename = filename.replace('.csv', '_highlighted.html')
     styled_df.to_html(styled_filename)
 
     print(f"Highlighted table saved to {styled_filename}")
-    
 
 if __name__ == "__main__":
     # Afficher les informations extraites
