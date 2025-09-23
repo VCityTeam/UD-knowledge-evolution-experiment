@@ -7,9 +7,6 @@
 **/.env
 **/plots
 
-# data
+# results
+**/results
 **log_data.json
-**_test_results.json
-**_test_results.csv
-**_test_results_highlighted.html
-**_test_results_highlighted_each_component.html

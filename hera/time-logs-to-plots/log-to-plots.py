@@ -482,8 +482,8 @@ def store_data_to_json(data, file_path):
     """
     with open(file_path, 'w') as f:
         json.dump(data, f)
-        
-def check_shapiro_wilk_test(data: list, warmup: int):
+
+def check_shapiro_wilk_test(data: list, warmup: int, query_type: str, output_folder: str):
     import pandas as pd
     from scipy import stats
     
@@ -526,12 +526,12 @@ def check_shapiro_wilk_test(data: list, warmup: int):
         })
         
     # save results to a json file
-    with open('shapiro_wilk_test_results.json', 'w') as f:
+    with open(os.path.join(output_folder, f'shapiro_wilk_test_results_{query_type}.json'), 'w') as f:
         json.dump(results, f, indent=4)
         
     return results
-            
-def check_Mann_Whitney_U_test(data: list, warmup: int):
+
+def check_Mann_Whitney_U_test(data: list, warmup: int, query_type: str, output_folder: str):
     import pandas as pd
     from scipy import stats
     from itertools import combinations
@@ -580,16 +580,16 @@ def check_Mann_Whitney_U_test(data: list, warmup: int):
             })
 
     # save results to a json file
-    with open('mann_whitney_u_test_results.json', 'w') as f:
+    with open(os.path.join(output_folder, f'mann_whitney_u_test_results_{query_type}.json'), 'w') as f:
         json.dump(results, f, indent=4)
         
     return results
 
-def create_shapiro_wilk_test_table(results: list):
+def create_shapiro_wilk_test_table(results: list, query_type: str, output_folder: str):
     import pandas as pd
-    
-    filename = 'shapiro_wilk_test_results.csv'
-    
+
+    filename = os.path.join(output_folder, f'shapiro_wilk_test_results_{query_type}.csv')
+
     df = pd.DataFrame(results)
     
     # Create a pivot table as before
@@ -610,7 +610,7 @@ def create_shapiro_wilk_test_table(results: list):
     # Save with multi-level columns
     df.to_csv(filename, index=False, index_label=['STEP', 'VERSION', 'QUERY'], header=True, float_format='%.2f')
     
-    print("Shapiro-Wilk test results saved to shapiro_wilk_test_results.csv")
+    print("Shapiro-Wilk test results saved to ", filename)
     
     return filename
 
@@ -761,7 +761,8 @@ def highlight_quaque_csv(filename: str):
     styled_df.to_html(styled_filename)
 
     print(f"Highlighted table saved to {styled_filename}")
-    
+
+
 def highlight_each_component_csv(filename: str):
     import pandas as pd
     
@@ -770,6 +771,19 @@ def highlight_each_component_csv(filename: str):
     styled_filename = filename.replace('.csv', '_highlighted_each_component.html')
     styled_df.to_html(styled_filename)
     print(f"Highlighted table saved to {styled_filename}")
+
+
+def create_statistical_test_tables(filtered_data, query_type, output_folder):
+    print("------------------- P-Value Test (Shapiro-Wilk) -------------------")
+    shapiro_wilk_test_results = check_shapiro_wilk_test(data=filtered_data, warmup=20, query_type=query_type, output_folder=output_folder)
+    print("------------------- Mann-Whitney U Test -------------------")
+    mann_whitney_u_test_results = check_Mann_Whitney_U_test(data=filtered_data, warmup=20, query_type=query_type, output_folder=output_folder)
+
+    print("Creating statistical test tables in CSV format.")
+    filename = create_shapiro_wilk_test_table(shapiro_wilk_test_results, query_type=query_type, output_folder=output_folder)
+
+    highlight_quaque_csv(filename)
+    highlight_each_component_csv(filename)
 
 if __name__ == "__main__":
     # Afficher les informations extraites
@@ -791,9 +805,12 @@ if __name__ == "__main__":
     print(f"Minimum count component: {min_count_component}")
 
     log_data = extract_log_info(log_file_path, queries_info, min_count_version, min_count_component, min_repeat)
+    
+    output_folder = "results"
+    os.makedirs(output_folder, exist_ok=True)
 
     store_data_to_json(data=log_data, file_path="log_data.json")
-    
+
     if mode == "plots" or mode == "all":
         for scale in ["linear", "log"]:
             whisker_duration_per_component_query_config(data=log_data, scale=scale, limit=50)
@@ -802,13 +819,12 @@ if __name__ == "__main__":
         create_version_normalized_duration_plot(data=log_data, limit=50)
         
     if mode == "stats" or mode == "all":
-        print("------------------- P-Value Test (Shapiro-Wilk) -------------------")
-        shapiro_wilk_test_results = check_shapiro_wilk_test(data=log_data, warmup=20)
-        print("------------------- Mann-Whitney U Test -------------------")
-        mann_whitney_u_test_results = check_Mann_Whitney_U_test(data=log_data, warmup=20)
-    
-        print("Creating statistical test tables in CSV format.")
-        filename = create_shapiro_wilk_test_table(shapiro_wilk_test_results)
-        
-        highlight_quaque_csv(filename)
-        highlight_each_component_csv(filename)
+        for query_type in ["aggregative", "non-aggregative"]:
+            if query_type == "non-aggregative":
+                print(f"Processing query type: {query_type}")
+                filtered_log_data = [entry for entry in log_data if not (entry['AGGREGATIVE'])]
+                create_statistical_test_tables(filtered_log_data, query_type, output_folder)
+            else:
+                print(f"Processing query type: {query_type}")
+                filtered_log_data = [entry for entry in log_data if (entry['AGGREGATIVE'])]
+                create_statistical_test_tables(filtered_log_data, query_type, output_folder)
