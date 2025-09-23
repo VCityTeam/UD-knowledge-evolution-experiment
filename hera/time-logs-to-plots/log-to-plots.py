@@ -493,11 +493,41 @@ def check_shapiro_wilk_test(data: list, warmup: int, query_type: str, output_fol
     df = pd.DataFrame(data)
     
     results = []
+    results_without_query = []
     
     # Remove warmup tries
     df = df[df['TRY'] > warmup]
     
     grouped = df.groupby(['STEP', 'QUERY', 'COMPONENT_NAME', 'VERSION'])
+    grouped_without_query = df.groupby(['STEP', 'COMPONENT_NAME', 'VERSION'])
+    
+    for name, group in grouped_without_query:
+        step, component, version = name
+        if len(group) < 2:
+            print(f"Not enough data for statistical test for {step, component, version}")
+            continue
+        # Perform Shapiro-Wilk test for normality
+        grouped_data = group['DURATION (ms)']
+        stat, p_value = stats.shapiro(grouped_data)
+        alpha = 0.05
+        if p_value > alpha:
+            print(f"Data for {step, component, version} is normally distributed (p={p_value:.3f})")
+
+        results_without_query.append({
+            'STEP': int(step),
+            'COMPONENT_NAME': component,
+            'VERSION': int(version),
+            'W_STATISTIC': stat,
+            'P_VALUE': p_value,
+            'NORMALLY_DISTRIBUTED': str(p_value > alpha),
+            'MEAN': grouped_data.mean(),
+            'MEDIAN': grouped_data.median(),
+            '75TH_PERC': grouped_data.quantile(0.75),
+            '95TH_PERC': grouped_data.quantile(0.95),
+        })
+        
+    with open(os.path.join(output_folder, f'shapiro_wilk_test_results_without_query_{query_type}.json'), 'w') as f:
+        json.dump(results_without_query, f, indent=4)
 
     for name, group in grouped:
         step, query, component, version = name
@@ -529,7 +559,7 @@ def check_shapiro_wilk_test(data: list, warmup: int, query_type: str, output_fol
     with open(os.path.join(output_folder, f'shapiro_wilk_test_results_{query_type}.json'), 'w') as f:
         json.dump(results, f, indent=4)
         
-    return results
+    return results, results_without_query
 
 def check_Mann_Whitney_U_test(data: list, warmup: int, query_type: str, output_folder: str):
     import pandas as pd
@@ -543,11 +573,44 @@ def check_Mann_Whitney_U_test(data: list, warmup: int, query_type: str, output_f
     df = pd.DataFrame(data)
     
     results = []
+    results_without_query = []
     
     # Remove warmup tries
     df = df[df['TRY'] > warmup]
     
     grouped = df.groupby(['STEP', 'QUERY', 'VERSION'])
+    grouped_without_query = df.groupby(['STEP', 'VERSION'])
+    
+    for name, group in grouped_without_query:
+        step, version = name
+        components = group['COMPONENT_NAME'].unique()
+        if len(components) < 2:
+            print(f"Not enough components for statistical test for {step, version}")
+            continue
+    
+        for comp1, comp2 in combinations(components, 2):
+            data1 = group[group['COMPONENT_NAME'] == comp1]['DURATION (ms)']
+            data2 = group[group['COMPONENT_NAME'] == comp2]['DURATION (ms)']
+            if len(data1) < 2 or len(data2) < 2:
+                print(f"Not enough data for Mann-Whitney U test between {comp1} and {comp2} for {step, version}")
+                continue
+            stat, p_value = stats.mannwhitneyu(data1, data2, alternative='two-sided')
+            
+            alpha = 0.05
+            if p_value <= alpha:
+                print(f"Significant difference between {comp1} and {comp2} for {step, version} (p={p_value:.3f})")
+                
+            results_without_query.append({
+                'STEP': int(step),
+                'VERSION': int(version),
+                'COMPONENT_1': comp1,
+                'COMPONENT_2': comp2,
+                'U_STATISTIC': stat,
+                'P_VALUE': p_value,
+                'SIGNIFICANT': str(p_value <= alpha)
+            })
+    with open(os.path.join(output_folder, f'mann_whitney_u_test_results_without_query_{query_type}.json'), 'w') as f:
+        json.dump(results_without_query, f, indent=4)
 
     for name, group in grouped:
         step, query, version = name
@@ -582,18 +645,18 @@ def check_Mann_Whitney_U_test(data: list, warmup: int, query_type: str, output_f
     # save results to a json file
     with open(os.path.join(output_folder, f'mann_whitney_u_test_results_{query_type}.json'), 'w') as f:
         json.dump(results, f, indent=4)
-        
-    return results
 
-def create_shapiro_wilk_test_table(results: list, query_type: str, output_folder: str):
+    return results, results_without_query
+
+def create_shapiro_wilk_test_table(results: list, query_type: str, output_folder: str, with_query: bool):
     import pandas as pd
 
-    filename = os.path.join(output_folder, f'shapiro_wilk_test_results_{query_type}.csv')
+    filename = os.path.join(output_folder, "with_query" if with_query else "without_query", f'shapiro_wilk_test_results_{query_type}.csv')
 
     df = pd.DataFrame(results)
     
     # Create a pivot table as before
-    df = df.pivot_table(index=['STEP', 'VERSION','QUERY'],
+    df = df.pivot_table(index=['STEP', 'VERSION','QUERY'] if with_query else ['STEP', 'VERSION'],
                         columns='COMPONENT_NAME',
                         values=['MEDIAN', '75TH_PERC', '95TH_PERC'],
                         aggfunc='first')
@@ -608,7 +671,7 @@ def create_shapiro_wilk_test_table(results: list, query_type: str, output_folder
     df.reset_index(inplace=True)
 
     # Save with multi-level columns
-    df.to_csv(filename, index=False, index_label=['STEP', 'VERSION', 'QUERY'], header=True, float_format='%.2f')
+    df.to_csv(filename, index=False, index_label=['STEP', 'VERSION', 'QUERY'] if with_query else ['STEP', 'VERSION'], header=True, float_format='%.2f')
     
     print("Shapiro-Wilk test results saved to ", filename)
     
@@ -775,15 +838,18 @@ def highlight_each_component_csv(filename: str):
 
 def create_statistical_test_tables(filtered_data, query_type, output_folder):
     print("------------------- P-Value Test (Shapiro-Wilk) -------------------")
-    shapiro_wilk_test_results = check_shapiro_wilk_test(data=filtered_data, warmup=20, query_type=query_type, output_folder=output_folder)
+    shapiro_wilk_test_results, shapiro_wilk_test_results_without_query = check_shapiro_wilk_test(data=filtered_data, warmup=20, query_type=query_type, output_folder=output_folder)
     print("------------------- Mann-Whitney U Test -------------------")
-    mann_whitney_u_test_results = check_Mann_Whitney_U_test(data=filtered_data, warmup=20, query_type=query_type, output_folder=output_folder)
+    mann_whitney_u_test_results, mann_whitney_u_test_results_without_query = check_Mann_Whitney_U_test(data=filtered_data, warmup=20, query_type=query_type, output_folder=output_folder)
 
     print("Creating statistical test tables in CSV format.")
-    filename = create_shapiro_wilk_test_table(shapiro_wilk_test_results, query_type=query_type, output_folder=output_folder)
+    filename = create_shapiro_wilk_test_table(shapiro_wilk_test_results, query_type=query_type, output_folder=output_folder, with_query=True)
+    filename_without_query = create_shapiro_wilk_test_table(shapiro_wilk_test_results_without_query, query_type=query_type, output_folder=output_folder, with_query=False)
 
-    highlight_quaque_csv(filename)
-    highlight_each_component_csv(filename)
+    for f in [filename, filename_without_query]:
+        highlight_quaque_csv(f)
+        highlight_each_component_csv(f)
+
 
 if __name__ == "__main__":
     # Afficher les informations extraites
@@ -806,8 +872,11 @@ if __name__ == "__main__":
 
     log_data = extract_log_info(log_file_path, queries_info, min_count_version, min_count_component, min_repeat)
     
-    output_folder = "results"
-    os.makedirs(output_folder, exist_ok=True)
+    main_output_folder = "results"
+    output_folders = [os.path.join(main_output_folder, "without_query"), os.path.join(main_output_folder, "with_query")]
+
+    for folder in output_folders:
+        os.makedirs(folder, exist_ok=True)
 
     store_data_to_json(data=log_data, file_path="log_data.json")
 
@@ -823,8 +892,8 @@ if __name__ == "__main__":
             if query_type == "non-aggregative":
                 print(f"Processing query type: {query_type}")
                 filtered_log_data = [entry for entry in log_data if not (entry['AGGREGATIVE'])]
-                create_statistical_test_tables(filtered_log_data, query_type, output_folder)
+                create_statistical_test_tables(filtered_log_data, query_type, main_output_folder)
             else:
                 print(f"Processing query type: {query_type}")
                 filtered_log_data = [entry for entry in log_data if (entry['AGGREGATIVE'])]
-                create_statistical_test_tables(filtered_log_data, query_type, output_folder)
+                create_statistical_test_tables(filtered_log_data, query_type, main_output_folder)
