@@ -51,7 +51,7 @@ def extract_log_info(log_file_path: str, queries_info: str, min_count_version: i
                 # Extraire COMPONENT, DURATION, et FILE
                 component = match.group('component')
                 # keep only the number of the query
-                query = query_name
+                query = query_name.replace("query-", "q-")
                 nb_try = int(match.group('try'))
                 version_conf = int(match.group('version'))
                 step_conf = int(match.group('step'))
@@ -521,8 +521,8 @@ def check_shapiro_wilk_test(data: list, warmup: int):
             'NORMALLY_DISTRIBUTED': str(p_value > alpha),
             'MEAN': grouped_data.mean(),
             'MEDIAN': grouped_data.median(),
-            '75TH_PERCENTILE': grouped_data.quantile(0.75),
-            '95TH_PERCENTILE': grouped_data.quantile(0.95),
+            '75TH_PERC': grouped_data.quantile(0.75),
+            '95TH_PERC': grouped_data.quantile(0.95),
         })
         
     # save results to a json file
@@ -593,9 +593,9 @@ def create_shapiro_wilk_test_table(results: list):
     df = pd.DataFrame(results)
     
     # Create a pivot table as before
-    df = df.pivot_table(index=['STEP', 'QUERY', 'VERSION'],
+    df = df.pivot_table(index=['STEP', 'VERSION','QUERY'],
                         columns='COMPONENT_NAME',
-                        values=['MEAN', 'MEDIAN', '75TH_PERCENTILE', '95TH_PERCENTILE'],
+                        values=['MEDIAN', '75TH_PERC', '95TH_PERC'],
                         aggfunc='first')
 
     # Prepare multi-level columns: first row is component, second row is statistic
@@ -608,7 +608,7 @@ def create_shapiro_wilk_test_table(results: list):
     df.reset_index(inplace=True)
 
     # Save with multi-level columns
-    df.to_csv(filename, index=False, index_label=['STEP', 'QUERY', 'VERSION'], header=True)
+    df.to_csv(filename, index=False, index_label=['STEP', 'VERSION', 'QUERY'], header=True, float_format='%.2f')
     
     print("Shapiro-Wilk test results saved to shapiro_wilk_test_results.csv")
     
@@ -631,7 +631,7 @@ def highlight_and_bold_quaque(row):
     valid_rows = []
 
     styles = [''] * len(row)
-    for stat in ['MEAN', 'MEDIAN', '75TH_PERCENTILE', '95TH_PERCENTILE']:
+    for stat in ['MEDIAN', '75TH_PERC', '95TH_PERC']:
         quaque_condensed_stat_cols = [col for col in quaque_condensed_cols if col[1] == stat]
         quaque_flat_stat_cols = [col for col in quaque_flat_cols if col[1] == stat]
         jena_stat_cols = [col for col in jena_cols if col[1] == stat]
@@ -697,7 +697,7 @@ def highlight_each_component(row):
     rows_quaque_condensed_better = []
     
     styles = [''] * len(row)
-    for stat in ['MEAN', 'MEDIAN', '75TH_PERCENTILE', '95TH_PERCENTILE']:
+    for stat in ['MEDIAN', '75TH_PERC', '95TH_PERC']:
         quaque_condensed_stat_cols = [col for col in quaque_condensed_cols if col[1] == stat]
         quaque_flat_stat_cols = [col for col in quaque_flat_cols if col[1] == stat]
         jena_stat_cols = [col for col in jena_cols if col[1] == stat]
@@ -755,7 +755,7 @@ def highlight_quaque_csv(filename: str):
     import pandas as pd
 
     df = pd.read_csv(filename, header=[0, 1])
-    styled_df = df.style.apply(highlight_and_bold_quaque, axis=1)
+    styled_df = df.style.apply(highlight_and_bold_quaque, axis=1).format(precision=2)
 
     styled_filename = filename.replace('.csv', '_highlighted.html')
     styled_df.to_html(styled_filename)
@@ -766,7 +766,7 @@ def highlight_each_component_csv(filename: str):
     import pandas as pd
     
     df = pd.read_csv(filename, header=[0, 1])
-    styled_df = df.style.apply(highlight_each_component, axis=1)
+    styled_df = df.style.apply(highlight_each_component, axis=1).format(precision=2)
     styled_filename = filename.replace('.csv', '_highlighted_each_component.html')
     styled_df.to_html(styled_filename)
     print(f"Highlighted table saved to {styled_filename}")
