@@ -499,7 +499,11 @@ def check_shapiro_wilk_test(data: list, warmup: int, query_type: str, output_fol
     df = df[df['TRY'] > warmup]
     
     grouped = df.groupby(['STEP', 'QUERY', 'COMPONENT_NAME', 'VERSION'])
-    grouped_without_query = df.groupby(['STEP', 'COMPONENT_NAME', 'VERSION'])
+
+    # Compute mean duration by TRY, COMPONENT, STEP, COMPONENT_NAME, VERSION
+    mean_df = df.groupby(['TRY', 'COMPONENT', 'STEP', 'COMPONENT_NAME', 'VERSION'], as_index=False)['DURATION (ms)'].mean()    
+    # Now group by STEP, COMPONENT_NAME, VERSION for the Shapiro-Wilk test
+    grouped_without_query = mean_df.groupby(['STEP', 'COMPONENT_NAME', 'VERSION'])
     
     for name, group in grouped_without_query:
         step, component, version = name
@@ -836,11 +840,11 @@ def highlight_each_component_csv(filename: str):
     print(f"Highlighted table saved to {styled_filename}")
 
 
-def create_statistical_test_tables(filtered_data, query_type, output_folder):
+def create_statistical_test_tables(filtered_data, query_type, output_folder, warmup):
     print("------------------- P-Value Test (Shapiro-Wilk) -------------------")
-    shapiro_wilk_test_results, shapiro_wilk_test_results_without_query = check_shapiro_wilk_test(data=filtered_data, warmup=20, query_type=query_type, output_folder=output_folder)
+    shapiro_wilk_test_results, shapiro_wilk_test_results_without_query = check_shapiro_wilk_test(data=filtered_data, warmup=warmup, query_type=query_type, output_folder=output_folder)
     print("------------------- Mann-Whitney U Test -------------------")
-    mann_whitney_u_test_results, mann_whitney_u_test_results_without_query = check_Mann_Whitney_U_test(data=filtered_data, warmup=20, query_type=query_type, output_folder=output_folder)
+    mann_whitney_u_test_results, mann_whitney_u_test_results_without_query = check_Mann_Whitney_U_test(data=filtered_data, warmup=warmup, query_type=query_type, output_folder=output_folder)
 
     print("Creating statistical test tables in CSV format.")
     filename = create_shapiro_wilk_test_table(shapiro_wilk_test_results, query_type=query_type, output_folder=output_folder, with_query=True)
@@ -856,6 +860,7 @@ if __name__ == "__main__":
     min_repeat = int(os.getenv("COUNT_REPEAT", 200))
     min_count_version = int(os.getenv("COUNT_VERSION", 3))
     min_count_component = int(os.getenv("COUNT_COMPONENT", 3))
+    warmup = int(os.getenv("WARMUP", 50))
     mode = os.getenv("MODE", "stats")
 
     log_file_path = os.getenv("LOG_FILE_PATH")
@@ -892,8 +897,8 @@ if __name__ == "__main__":
             if query_type == "non-aggregative":
                 print(f"Processing query type: {query_type}")
                 filtered_log_data = [entry for entry in log_data if not (entry['AGGREGATIVE'])]
-                create_statistical_test_tables(filtered_log_data, query_type, main_output_folder)
+                create_statistical_test_tables(filtered_log_data, query_type, main_output_folder, warmup)
             else:
                 print(f"Processing query type: {query_type}")
                 filtered_log_data = [entry for entry in log_data if (entry['AGGREGATIVE'])]
-                create_statistical_test_tables(filtered_log_data, query_type, main_output_folder)
+                create_statistical_test_tables(filtered_log_data, query_type, main_output_folder, warmup)

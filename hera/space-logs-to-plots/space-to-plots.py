@@ -57,10 +57,29 @@ def extract_log_info(log_file_path: str, min_count_version: int):
                     "COMPONENT_NAME": get_component_name(component)
                 })
 
+    extracted_data = remove_all_with_no_component(data=extracted_data)
+    print(f"After remove_all_with_no_component: {len(extracted_data)}")
     extracted_data = remove_all_with_less_than_count_version(data=extracted_data, count=min_count_version)
     print(f"After remove_all_with_less_than_count_version: {len(extracted_data)}")
 
     return extracted_data
+
+def remove_all_with_no_component(data):
+    """
+    Remove all entries from data when the metric exists for all components for a given STEP and VERSION
+    4 components are expected: blazegraph, jena, quaque-flat, quaque-condensed
+    """
+    import pandas as pd
+    df = pd.DataFrame(data)
+    
+    component_counts = df.groupby(['STEP', 'VERSION'])['COMPONENT_NAME'].nunique()
+    components_to_remove = component_counts[component_counts != 4].index.tolist()
+    
+    for step, version in components_to_remove:
+        df = df[~((df['STEP'] == step) & (df['VERSION'] == version))]
+        
+    return df.to_dict(orient='records')    
+    
 
 def remove_all_with_less_than_count_version(data, count=4):
     """
@@ -172,10 +191,28 @@ def create_space_plot(data, scale="linear"):
             ax.xaxis.get_major_locator().set_params(integer=True)
 
             # --- Create a safe filename for the plot ---
-            os.makedirs(f"{output_dir}/{step}", exist_ok=True)
-            filepath = f"{output_dir}/{step}/space.png"
+            os.makedirs(f"{output_dir}", exist_ok=True)
+            filepath = f"{output_dir}/space-{step}.png"
             plt.savefig(filepath, dpi=300)
             plt.close(fig)
+
+def create_space_csv(data):
+    # remove the column "COMPONENT", "TIME"
+    output_dir = f'plots/space/csv'
+    os.makedirs(output_dir, exist_ok=True)
+    import pandas as pd
+    df = pd.DataFrame(data)
+    df = df.drop(columns=["COMPONENT", "TIME"], errors='ignore')
+    
+    # for each STEP, VERSION, display the space of each component in a separate column
+    df_pivot = df.pivot_table(index=['STEP', 'VERSION'], columns='COMPONENT_NAME', values='SPACE').reset_index()
+    df_pivot = df_pivot.sort_values(by=['STEP', 'VERSION'])
+    
+    # precision to 2 decimals
+    df_pivot = df_pivot.round(2)
+
+    df_pivot.to_csv(f"{output_dir}/space.csv", index=False)
+
 
 def store_data_to_json(data, file_path):
     """
@@ -206,4 +243,5 @@ if __name__ == "__main__":
 
     for scale in ["linear", "log"]:
         create_space_plot(data=log_data, scale=scale)
+    create_space_csv(data=log_data)
  
