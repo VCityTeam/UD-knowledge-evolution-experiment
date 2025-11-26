@@ -4,6 +4,7 @@
 **secret*
 **/__pycache__
 **/*.log
+**/*.csv
 **/.env
 **/plots
 

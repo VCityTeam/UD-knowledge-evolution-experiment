@@ -1,0 +1,437 @@
+{
+    "bear-b-join1-counto-by-s.rq": {
+        "description": "Query using predicates: country, label",
+        "aggregative": true,
+        "query": "SELECT (COUNT(?o) AS ?counto) WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/country> ?o . ?o <http://www.w3.org/2000/01/rdf-schema#label> ?y . } } GROUP BY ?s"
+    },
+    "bear-b-p-1-counto-by-s.rq": {
+        "description": "Query using predicates: label",
+        "aggregative": true,
+        "query": "SELECT (COUNT(?o) AS ?counto) WHERE { GRAPH ?g { ?s <http://www.w3.org/2000/01/rdf-schema#label> ?o . } } GROUP BY ?s"
+    },
+    "bear-b-p-4-avgo-by-s.rq": {
+        "description": "Query using predicates: long",
+        "aggregative": true,
+        "query": "SELECT (AVG(?o) AS ?avgo) WHERE { GRAPH ?g { ?s <http://www.w3.org/2003/01/geo/wgs84_pos#long> ?o . } } GROUP BY ?s"
+    },
+    "bear-b-p-4-maxo-by-s.rq": {
+        "description": "Query using predicates: long",
+        "aggregative": true,
+        "query": "SELECT (MAX(?o) AS ?maxo) WHERE { GRAPH ?g { ?s <http://www.w3.org/2003/01/geo/wgs84_pos#long> ?o . } } GROUP BY ?s"
+    },
+    "bear-b-po-1-counts-by-g.rq": {
+        "description": "Query using predicates: type, MusicalArtist",
+        "aggregative": true,
+        "query": "SELECT (COUNT(?s) AS ?counts) WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/MusicalArtist> . } } GROUP BY ?g"
+    },
+    "join1.rq": {
+        "description": "Query using predicates: country, label",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/country> ?o . ?o <http://www.w3.org/2000/01/rdf-schema#label> ?y . } }"
+    },
+    "join10.rq": {
+        "description": "Query using predicates: country, long",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/country> ?o . ?o <http://www.w3.org/2003/01/geo/wgs84_pos#long> ?y . } }"
+    },
+    "join11.rq": {
+        "description": "Query using predicates: type, MusicalArtist, type, Person",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/MusicalArtist> . ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Person> . } }"
+    },
+    "join12.rq": {
+        "description": "Query using predicates: type, SoccerPlayer, type, Person",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/SoccerPlayer> . ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Person> . } }"
+    },
+    "join13.rq": {
+        "description": "Query using predicates: type, Film, starring",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Film> . ?s <http://dbpedia.org/ontology/starring> ?o . } }"
+    },
+    "join14.rq": {
+        "description": "Query using predicates: type, Person, homepage",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Person> . ?s <http://xmlns.com/foaf/0.1/homepage> ?o . } }"
+    },
+    "join15.rq": {
+        "description": "Query using predicates: type, SportsEvent, name",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/SportsEvent> . ?s <http://xmlns.com/foaf/0.1/name> ?o . } }"
+    },
+    "join16.rq": {
+        "description": "Query using predicates: type, Artist, birthDate",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Artist> . ?s <http://dbpedia.org/ontology/birthDate> ?o . } }"
+    },
+    "join17.rq": {
+        "description": "Query using predicates: type, SoccerPlayer, type, Person",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/SoccerPlayer> . ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person> . } }"
+    },
+    "join18.rq": {
+        "description": "Query using predicates: type, Country, lat",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Country> . ?s <http://www.w3.org/2003/01/geo/wgs84_pos#lat> ?o . } }"
+    },
+    "join19.rq": {
+        "description": "Query using predicates: type, Country, long",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Country> . ?s <http://www.w3.org/2003/01/geo/wgs84_pos#long> ?o . } }"
+    },
+    "join2.rq": {
+        "description": "Query using predicates: deathPlace, lat",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/deathPlace> ?o . ?o <http://www.w3.org/2003/01/geo/wgs84_pos#lat> ?y . } }"
+    },
+    "join20.rq": {
+        "description": "Query using predicates: type, Organisation, homepage",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Organisation> . ?s <http://xmlns.com/foaf/0.1/homepage> ?o . } }"
+    },
+    "join3.rq": {
+        "description": "Query using predicates: spouse, name",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/spouse> ?o . ?o <http://xmlns.com/foaf/0.1/name> ?y . } }"
+    },
+    "join4.rq": {
+        "description": "Query using predicates: spouse, name",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/ontology/spouse> ?o . ?o <http://xmlns.com/foaf/0.1/name> ?y . } }"
+    },
+    "join5.rq": {
+        "description": "Query using predicates: starring, name",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/ontology/starring> ?o . ?o <http://dbpedia.org/property/name> ?y . } }"
+    },
+    "join6.rq": {
+        "description": "Query using predicates: director, name",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/ontology/director> ?o . ?o <http://dbpedia.org/property/name> ?y . } }"
+    },
+    "join7.rq": {
+        "description": "Query using predicates: label, releaseDate",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/2000/01/rdf-schema#label> ?o . ?o <http://dbpedia.org/ontology/releaseDate> ?y . } }"
+    },
+    "join8.rq": {
+        "description": "Query using predicates: label, runtime",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/2000/01/rdf-schema#label> ?o . ?o <http://dbpedia.org/ontology/Work/runtime> ?y . } }"
+    },
+    "join9.rq": {
+        "description": "Query using predicates: name, alternativeNames",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://xmlns.com/foaf/0.1/name> ?o . ?o <http://dbpedia.org/property/alternativeNames> ?y . } }"
+    },
+    "p-1.rq": {
+        "description": "Query using predicates: label",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/2000/01/rdf-schema#label> ?o . } }"
+    },
+    "p-10.rq": {
+        "description": "Query using predicates: party",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/party> ?o . } }"
+    },
+    "p-11.rq": {
+        "description": "Query using predicates: almaMater",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/almaMater> ?o . } }"
+    },
+    "p-12.rq": {
+        "description": "Query using predicates: teams",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/teams> ?o . } }"
+    },
+    "p-13.rq": {
+        "description": "Query using predicates: homepage",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://xmlns.com/foaf/0.1/homepage> ?o . } }"
+    },
+    "p-14.rq": {
+        "description": "Query using predicates: director",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/ontology/director> ?o . } }"
+    },
+    "p-15.rq": {
+        "description": "Query using predicates: birthDate",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/ontology/birthDate> ?o . } }"
+    },
+    "p-16.rq": {
+        "description": "Query using predicates: releaseDate",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/ontology/releaseDate> ?o . } }"
+    },
+    "p-17.rq": {
+        "description": "Query using predicates: name",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/name> ?o . } }"
+    },
+    "p-18.rq": {
+        "description": "Query using predicates: series",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/series> ?o . } }"
+    },
+    "p-19.rq": {
+        "description": "Query using predicates: caption",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/caption> ?o . } }"
+    },
+    "p-2.rq": {
+        "description": "Query using predicates: type",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?o . } }"
+    },
+    "p-20.rq": {
+        "description": "Query using predicates: birthPlace",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/birthPlace> ?o . } }"
+    },
+    "p-21.rq": {
+        "description": "Query using predicates: dateOfBirth",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/dateOfBirth> ?o . } }"
+    },
+    "p-22.rq": {
+        "description": "Query using predicates: dateOfDeath",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/dateOfDeath> ?o . } }"
+    },
+    "p-23.rq": {
+        "description": "Query using predicates: deathDate",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/ontology/deathDate> ?o . } }"
+    },
+    "p-24.rq": {
+        "description": "Query using predicates: title",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/ontology/title> ?o . } }"
+    },
+    "p-25.rq": {
+        "description": "Query using predicates: deathPlace",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/deathPlace> ?o . } }"
+    },
+    "p-26.rq": {
+        "description": "Query using predicates: spouse",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/spouse> ?o . } }"
+    },
+    "p-27.rq": {
+        "description": "Query using predicates: years",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/years> ?o . } }"
+    },
+    "p-28.rq": {
+        "description": "Query using predicates: alternativeNames",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/alternativeNames> ?o . } }"
+    },
+    "p-29.rq": {
+        "description": "Query using predicates: after",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/after> ?o . } }"
+    },
+    "p-3.rq": {
+        "description": "Query using predicates: lat",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/2003/01/geo/wgs84_pos#lat> ?o . } }"
+    },
+    "p-30.rq": {
+        "description": "Query using predicates: before",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/before> ?o . } }"
+    },
+    "p-31.rq": {
+        "description": "Query using predicates: successor",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/successor> ?o . } }"
+    },
+    "p-32.rq": {
+        "description": "Query using predicates: artist",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/ontology/artist> ?o . } }"
+    },
+    "p-33.rq": {
+        "description": "Query using predicates: wikiPageUsesTemplate",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/wikiPageUsesTemplate> ?o . } }"
+    },
+    "p-34.rq": {
+        "description": "Query using predicates: starring",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/starring> ?o . } }"
+    },
+    "p-35.rq": {
+        "description": "Query using predicates: point",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.georss.org/georss/point> ?o . } }"
+    },
+    "p-36.rq": {
+        "description": "Query using predicates: birthPlace",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/ontology/birthPlace> ?o . } }"
+    },
+    "p-37.rq": {
+        "description": "Query using predicates: location",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/ontology/location> ?o . } }"
+    },
+    "p-38.rq": {
+        "description": "Query using predicates: starring",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/ontology/starring> ?o . } }"
+    },
+    "p-39.rq": {
+        "description": "Query using predicates: country",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/country> ?o . } }"
+    },
+    "p-4.rq": {
+        "description": "Query using predicates: long",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/2003/01/geo/wgs84_pos#long> ?o . } }"
+    },
+    "p-40.rq": {
+        "description": "Query using predicates: parent",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/ontology/parent> ?o . } }"
+    },
+    "p-41.rq": {
+        "description": "Query using predicates: location",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/location> ?o . } }"
+    },
+    "p-42.rq": {
+        "description": "Query using predicates: knownFor",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/ontology/knownFor> ?o . } }"
+    },
+    "p-43.rq": {
+        "description": "Query using predicates: spouse",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/ontology/spouse> ?o . } }"
+    },
+    "p-44.rq": {
+        "description": "Query using predicates: nationality",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/ontology/nationality> ?o . } }"
+    },
+    "p-45.rq": {
+        "description": "Query using predicates: activeYearsStartYear",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/ontology/activeYearsStartYear> ?o . } }"
+    },
+    "p-46.rq": {
+        "description": "Query using predicates: runtime",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/ontology/Work/runtime> ?o . } }"
+    },
+    "p-47.rq": {
+        "description": "Query using predicates: description",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://purl.org/dc/elements/1.1/description> ?o . } }"
+    },
+    "p-48.rq": {
+        "description": "Query using predicates: clubs",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/clubs> ?o . } }"
+    },
+    "p-49.rq": {
+        "description": "Query using predicates: cover",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/cover> ?o . } }"
+    },
+    "p-5.rq": {
+        "description": "Query using predicates: comment",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/2000/01/rdf-schema#comment> ?o . } }"
+    },
+    "p-6.rq": {
+        "description": "Query using predicates: latm",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/latm> ?o . } }"
+    },
+    "p-7.rq": {
+        "description": "Query using predicates: longm",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/property/longm> ?o . } }"
+    },
+    "p-8.rq": {
+        "description": "Query using predicates: name",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://xmlns.com/foaf/0.1/name> ?o . } }"
+    },
+    "p-9.rq": {
+        "description": "Query using predicates: abstract",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://dbpedia.org/ontology/abstract> ?o . } }"
+    },
+    "po-1.rq": {
+        "description": "Query using predicates: type, MusicalArtist",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/MusicalArtist> . } }"
+    },
+    "po-10.rq": {
+        "description": "Query using predicates: type, Album",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Album> . } }"
+    },
+    "po-11.rq": {
+        "description": "Query using predicates: type, SportsEvent",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/SportsEvent> . } }"
+    },
+    "po-12.rq": {
+        "description": "Query using predicates: type, SoccerPlayer",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/SoccerPlayer> . } }"
+    },
+    "po-13.rq": {
+        "description": "Query using predicates: type, TelevisionShow",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/TelevisionShow> . } }"
+    },
+    "po-2.rq": {
+        "description": "Query using predicates: type, Film",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Film> . } }"
+    },
+    "po-3.rq": {
+        "description": "Query using predicates: type, Person",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Person> . } }"
+    },
+    "po-4.rq": {
+        "description": "Query using predicates: type, Place",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Place> . } }"
+    },
+    "po-5.rq": {
+        "description": "Query using predicates: type, Artist",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Artist> . } }"
+    },
+    "po-6.rq": {
+        "description": "Query using predicates: type, Country",
+        "aggregative": true,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Country> . } }"
+    },
+    "po-7.rq": {
+        "description": "Query using predicates: type, Organisation",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Organisation> . } }"
+    },
+    "po-8.rq": {
+        "description": "Query using predicates: type, VideoGame",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/VideoGame> . } }"
+    },
+    "po-9.rq": {
+        "description": "Query using predicates: type, Person",
+        "aggregative": false,
+        "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person> . } }"
+    }
+}

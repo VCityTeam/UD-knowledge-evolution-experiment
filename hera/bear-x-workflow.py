@@ -1,0 +1,135 @@
+from hera.workflows import (
+    DAG,
+    WorkflowTemplate,
+    Task,
+    Container,
+    SecretEnv,
+    Env,
+    Artifact,
+)
+from hera.shared import global_config
+from hera.workflows.models import Toleration, Arguments, Parameter, TemplateRef, ImagePullPolicy
+from experiment_constants import constants
+import os
+
+
+if __name__ == "__main__":
+
+    global_config.host = f'https://{os.environ.get("ARGO_SERVER")}'
+    global_config.token = os.environ.get("ARGO_TOKEN")
+    global_config.namespace = os.environ.get("ARGO_NAMESPACE", "argo")
+
+    with WorkflowTemplate(
+        name="benchmark-dag",
+        entrypoint="benchmark-dag",
+        tolerations=[Toleration(
+            key="gpu", operator="Exists", effect="PreferNoSchedule")],
+        arguments=Arguments(parameters=[
+            Parameter(name="versions", description="List of versions", default="[10,50,100]"),
+            Parameter(name="products", description="List of initial products (inside the first version)", default="[1]"),
+            Parameter(name="steps", description="List of steps between two versions", default="[0,10,20]"),
+            Parameter(name="count_version", description="Minimum number of different versions a component must have to be included in the plots", default="3"),
+            Parameter(name="count_component", description="Minimum number of different components a version must have to be included in the plots", default="3"),
+            Parameter(name="count_repeat", description="Minimum number of times a query must be repeated to be included in the plots", default="200")
+        ]),
+
+    ) as wt:
+        
+        get_workflow_logs = Container(
+            name="fetch-workflow-logs",
+            image=constants.get_workflow_logs,
+            image_pull_policy=ImagePullPolicy.if_not_present,
+            inputs=[
+                Parameter(name="workflow_id"),
+            ],
+            env=[
+                SecretEnv(name="AWS_SECRET_ACCESS_KEY", secret_name="ceph-s3-pagoda", secret_key="secretkey"),
+                SecretEnv(name="AWS_ACCESS_KEY_ID", secret_name="ceph-s3-pagoda", secret_key="accesskey"),
+                Env(name="WORKFLOW_ID", value="{{inputs.parameters.workflow_id}}"),
+            ],
+            outputs=[Artifact(name="time_merged_logs", path="/app/{{inputs.parameters.workflow_id}}/querier/merged_logs.log"),
+                     Artifact(name="space_merged_logs", path="/app/{{inputs.parameters.workflow_id}}/space/merged_logs.log")],
+        )
+
+        create_time_plots = Container(
+            name="time-plots",
+            image=constants.log_to_plots,
+            inputs=[
+                Artifact(name="time_merged_logs", path="/app/merged_logs.log"),
+                Parameter(name="count_version"),
+                Parameter(name="count_component"),
+                Parameter(name="count_repeat"),
+            ],
+            image_pull_policy=ImagePullPolicy.if_not_present,
+            env=[
+                Env(name="LOG_FILE_PATH", value="merged_logs.log"),
+                Env(name="COUNT_VERSION", value="{{inputs.parameters.count_version}}"),
+                Env(name="COUNT_COMPONENT", value="{{inputs.parameters.count_component}}"),
+                Env(name="COUNT_REPEAT", value="{{inputs.parameters.count_repeat}}"),
+            ],
+            outputs=[
+                Artifact(name="time-plots", path="/app/"),
+            ]
+        )
+        
+        create_space_plots = Container(
+            name="space-plots",
+            image=constants.space_logs_to_plots,
+            inputs=[
+                Artifact(name="space_merged_logs", path="/app/merged_logs.log"),
+                Parameter(name="count_version")
+            ],
+            image_pull_policy=ImagePullPolicy.if_not_present,
+            env=[
+                Env(name="LOG_FILE_PATH", value="merged_logs.log"),
+                Env(name="COUNT_VERSION", value="{{inputs.parameters.count_version}}"),
+            ],
+            outputs=[
+                Artifact(name="space-plots", path="/app/"),
+            ]
+        )
+
+        with DAG(name="benchmark-dag"):
+
+            task_ds_dbs = Task(
+                name="dataset-databases",
+                template_ref=TemplateRef(
+                    name="dataset-databases-dag", template="dataset-databases-dag"),
+                arguments=Arguments(
+                    parameters=[Parameter(name="ds_config", value="{{item.ds_config}}"),
+                                Parameter(name="dbs_config", value="{{item.dbs_config}}"),],
+                ),
+            )
+
+            get_workflow_logs_task = Task(
+                name="aggregate-workflow-logs",
+                template=get_workflow_logs,
+                arguments={
+                    "workflow_id": "{{workflow.name}}",
+                }
+            )
+
+            create_time_plots_task = Task(
+                name="time-plots",
+                template=create_time_plots,
+                arguments={
+                    "time_merged_logs": get_workflow_logs_task.get_artifact("time_merged_logs"),
+                    "count_version": "{{workflow.parameters.count_version}}",
+                    "count_component": "{{workflow.parameters.count_component}}",
+                    "count_repeat": "{{workflow.parameters.count_repeat}}",
+                }
+    
+            )
+
+            create_space_plots_task = Task(
+                name="space-plots",
+                template=create_space_plots,
+                arguments={
+                    "space_merged_logs": get_workflow_logs_task.get_artifact("space_merged_logs"),
+                    "count_version": "{{workflow.parameters.count_version}}",
+                },
+            )
+
+            task_ds_dbs >> get_workflow_logs_task >> [create_time_plots_task, create_space_plots_task]
+
+        wt.create()
