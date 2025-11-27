@@ -416,7 +416,7 @@
     },
     "po-6.rq": {
         "description": "Query using predicates: type, Country",
-        "aggregative": true,
+        "aggregative": false,
         "query": "SELECT * WHERE { GRAPH ?g { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Country> . } }"
     },
     "po-7.rq": {

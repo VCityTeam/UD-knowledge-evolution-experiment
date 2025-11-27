@@ -1,0 +1,26 @@
+{
+    "filters": [
+        {
+            "type": "group_max_value",
+            "column": "RUN_ID",
+            "group_by": ["POLICY", "GRANULARITY", "QUERY"],
+            "min_threshold": 200
+        },
+        {
+            "type": "exact_match",
+            "column": "GRANULARITY",
+            "value": "day"
+        }
+    ],
+    "colors": [
+        { "name": "jena-tdb-2", "color": "purple" },
+        { "name": "conver-g-flat", "color": "orange" },
+        { "name": "conver-g", "color": "green" }
+    ],
+    "default_color": "gray",
+    "sort_order": [
+        "jena-tdb-2",
+        "conver-g-flat",
+        "conver-g"
+    ]
+}
