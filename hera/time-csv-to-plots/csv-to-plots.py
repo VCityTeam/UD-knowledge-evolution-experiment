@@ -462,140 +462,68 @@ def create_shapiro_wilk_test_table(results: list, query_type: str, output_folder
     
     return filename
 
-def highlight_and_bold_converg(row):
+def highlight_each_component(row, config):
     import pandas as pd
-    
-    # Find all 'conver-g' columns
-    converg_condensed_cols = [col for col in row.index if col[0] == 'conver-g']
-    # Find all 'conver-g-flat' columns
-    converg_flat_cols = [col for col in row.index if col[0] == 'conver-g-flat']
-    # Find all 'jena-tdb-2' columns
-    jena_cols = [col for col in row.index if col[0] == 'jena-tdb-2']
-    # Find all other component columns
-    not_converg_condensed_cols = [col for col in row.index if not col[0] == 'conver-g']
-    
-    valid_rows = []
-
-    styles = [''] * len(row)
-    for stat in ['MEDIAN', '75TH_PERC', '95TH_PERC']:
-        converg_condensed_stat_cols = [col for col in converg_condensed_cols if col[1] == stat]
-        converg_flat_stat_cols = [col for col in converg_flat_cols if col[1] == stat]
-        jena_stat_cols = [col for col in jena_cols if col[1] == stat]
-        other_stat_cols = [col for col in not_converg_condensed_cols if col[1] == stat]
-        
-        for j_col in jena_stat_cols:
-            other_vals = [row[o_col] for o_col in other_stat_cols if pd.notnull(row[o_col])]
-            idx = row.index.get_loc(j_col)
-            styles[idx] = 'background-color: #E6E6FA' # Light purple
-        
-        for q_col in converg_flat_stat_cols:
-            other_vals = [row[o_col] for o_col in other_stat_cols if pd.notnull(row[o_col])]
-            idx = row.index.get_loc(q_col)
-            styles[idx] = 'background-color: #FFD580' # Light orange
-        
-        for q_col in converg_condensed_stat_cols:
-            q_val = row[q_col]
-            idx = row.index.get_loc(q_col)
-            styles[idx] = 'background-color: #90ee90' # Light green
-            if q_col[1] == 'MEDIAN':
-                other_vals = [row[o_col] for o_col in other_stat_cols if pd.notnull(row[o_col])]
-                if all(q_val < o_val for o_val in other_vals if pd.notnull(o_val)):
-                    valid_rows.append(row.name)
-                    
-    # Bold the lines where conver-g is the best in MEDIAN
-    # Make the row more visible
-    for i in valid_rows:
-        for j in range(len(styles)):
-            if styles[j] != '':
-                styles[j] += '; font-weight: bold; border: 2px solid black'
-            else:
-                styles[j] = 'font-weight: bold; border: 2px solid black'
-
-    return styles
-
-def highlight_each_component(row):
-    import pandas as pd
-    
-     # Find all 'conver-g' columns
-    converg_condensed_cols = [col for col in row.index if col[0] == 'conver-g']
-    # Find all 'conver-g-flat' columns
-    converg_flat_cols = [col for col in row.index if col[0] == 'conver-g-flat']
-    # Find all 'jena-tdb-2' columns
-    jena_cols = [col for col in row.index if col[0] == 'jena-tdb-2']
-    # Find all other component columns
-    def get_other_component_cols(component_prefix):
-        return [col for col in row.index if not col[0] == component_prefix]
-    
-    def get_other_stat_cols(component_prefix):
-        return [col for col in get_other_component_cols(component_prefix) if col[1] == stat]
-    
-    rows_jena_better = []
-    rows_converg_flat_better = []
-    rows_converg_condensed_better = []
     
     styles = [''] * len(row)
-    for stat in ['MEDIAN', '75TH_PERC', '95TH_PERC']:
-        converg_condensed_stat_cols = [col for col in converg_condensed_cols if col[1] == stat]
-        converg_flat_stat_cols = [col for col in converg_flat_cols if col[1] == stat]
-        jena_stat_cols = [col for col in jena_cols if col[1] == stat]
+    
+    # Get components from config
+    components_config = config.get('colors', [])
+    
+    # Extract unique components from the row index
+    # row.index is MultiIndex (Component, Statistic)
+    present_components = set(col[0] for col in row.index)
+    
+    # Get MEDIAN values for all components
+    median_values = {}
+    for comp in present_components:
+        key = (comp, 'MEDIAN')
+        if key in row.index:
+            val = row[key]
+            if pd.notnull(val):
+                median_values[comp] = val
+                
+    # Find winner
+    winner = None
+    for comp_config in components_config:
+        comp_name = comp_config.get('name')
+        if comp_name not in median_values:
+            continue
+            
+        my_val = median_values[comp_name]
         
-        for j_col in jena_stat_cols:
-            j_val = row[j_col]
-            other_vals = [row[o_col] for o_col in get_other_stat_cols('jena-tdb-2') if pd.notnull(row[o_col])]
-            if j_col[1] == 'MEDIAN':
-                if all(j_val < o_val for o_val in other_vals if pd.notnull(o_val)):
-                    rows_jena_better.append(row.name)
+        # Check if strictly better than all others
+        is_best = True
+        for other_comp, other_val in median_values.items():
+            if other_comp == comp_name:
+                continue
+            if my_val >= other_val:
+                is_best = False
+                break
         
-        for q_col in converg_flat_stat_cols:
-            q_val = row[q_col]
-            other_vals = [row[o_col] for o_col in get_other_stat_cols('conver-g-flat') if pd.notnull(row[o_col])]
-            if q_col[1] == 'MEDIAN':
-                if all(q_val < o_val for o_val in other_vals if pd.notnull(o_val)):
-                    rows_converg_flat_better.append(row.name)
-        
-        for q_col in converg_condensed_stat_cols:
-            q_val = row[q_col]
-            other_vals = [row[o_col] for o_col in get_other_stat_cols('conver-g') if pd.notnull(row[o_col])]
-            if q_col[1] == 'MEDIAN':
-                if all(q_val < o_val for o_val in other_vals if pd.notnull(o_val)):
-                    rows_converg_condensed_better.append(row.name)
-                
-    for i in rows_jena_better:
-        for j in range(len(styles)):
-            styles[j] = 'background-color: #E6E6FA;' # Light purple
-                
-    for i in rows_converg_flat_better:
-        for j in range(len(styles)):
-            styles[j] = 'background-color: #FFD580;' # Light orange
-                
-    for i in rows_converg_condensed_better:
-        for j in range(len(styles)):
-            styles[j] = 'background-color: #90ee90;' # Light green
-                
+        if is_best:
+            winner = comp_config
+            break 
+            
+    if winner:
+        highlight_color = winner.get('color')
+        if highlight_color:
+            styles = [f'background-color: {highlight_color};' for _ in range(len(row))]
+            
     return styles
 
-def highlight_converg_csv(filename: str):
-    import pandas as pd
 
-    df = pd.read_csv(filename, header=[0, 1])
-    styled_df = df.style.apply(highlight_and_bold_converg, axis=1).format(precision=2)
-    styled_filename = filename.replace('.csv', '_highlighted.html')
-    styled_df.to_html(styled_filename)
-
-    print(f"Highlighted table saved to {styled_filename}")
-
-
-def highlight_each_component_csv(filename: str):
+def highlight_each_component_csv(filename: str, plot_config: dict):
     import pandas as pd
     
     df = pd.read_csv(filename, header=[0, 1])
-    styled_df = df.style.apply(highlight_each_component, axis=1).format(precision=2)
+    styled_df = df.style.apply(highlight_each_component, axis=1, config=plot_config).format(precision=2)
     styled_filename = filename.replace('.csv', '_highlighted_each_component.html')
     styled_df.to_html(styled_filename)
     print(f"Highlighted table saved to {styled_filename}")
 
 
-def create_statistical_test_tables(filtered_data, query_type, output_folder, warmup):
+def create_statistical_test_tables(filtered_data, query_type, output_folder, warmup, plot_config):
     if not filtered_data:
         print(f"No data available for query type: {query_type}. Skipping statistical tests.")
         return
@@ -610,8 +538,7 @@ def create_statistical_test_tables(filtered_data, query_type, output_folder, war
     filename_without_query = create_shapiro_wilk_test_table(shapiro_wilk_test_results_without_query, query_type=query_type, output_folder=output_folder, with_query=False)
 
     for f in [filename, filename_without_query]:
-        highlight_converg_csv(f)
-        highlight_each_component_csv(f)
+        highlight_each_component_csv(f, plot_config)
 
 
 if __name__ == "__main__":
@@ -652,8 +579,8 @@ if __name__ == "__main__":
             if query_type == "non-aggregative":
                 print(f"Processing query type: {query_type}")
                 filtered_csv_data = [entry for entry in csv_data if not (entry['AGGREGATIVE'])]
-                create_statistical_test_tables(filtered_csv_data, query_type, main_output_folder, warmup)
+                create_statistical_test_tables(filtered_csv_data, query_type, main_output_folder, warmup, plot_config)
             else:
                 print(f"Processing query type: {query_type}")
                 filtered_csv_data = [entry for entry in csv_data if (entry['AGGREGATIVE'])]
-                create_statistical_test_tables(filtered_csv_data, query_type, main_output_folder, warmup)
+                create_statistical_test_tables(filtered_csv_data, query_type, main_output_folder, warmup, plot_config)

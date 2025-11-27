@@ -13,9 +13,9 @@
         }
     ],
     "colors": [
-        { "name": "jena-tdb-2", "color": "purple" },
-        { "name": "conver-g-flat", "color": "orange" },
-        { "name": "conver-g", "color": "green" }
+        { "name": "jena-tdb-2", "color": "#E6E6FA" },
+        { "name": "conver-g-flat", "color": "#FFD580" },
+        { "name": "conver-g", "color": "#90ee90"}
     ],
     "default_color": "gray",
     "sort_order": [
