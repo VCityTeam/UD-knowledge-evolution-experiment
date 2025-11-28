@@ -572,7 +572,7 @@ if __name__ == "__main__":
 
     if mode == "plots" or mode == "all":
         for scale in ["linear", "log"]:
-            whisker_duration_per_component_query_config(data=csv_data, plot_config=plot_config, scale=scale, limit=50)
+            whisker_duration_per_component_query_config(data=csv_data, plot_config=plot_config, scale=scale, limit=warmup)
         
     if mode == "stats" or mode == "all":
         for query_type in ["aggregative", "non-aggregative"]:
