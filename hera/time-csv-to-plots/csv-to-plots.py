@@ -49,13 +49,26 @@ def extract_csv_info(csv_file_path: str, queries_info: str, plot_config: dict):
             "TIME_MS": duration_ms,
             "QUERY": query_id,
             "RUN_ID": nb_try,
-            "AGGREGATIVE": query_info["aggregative"] if query_info else None
+            "AGGREGATIVE": query_info["aggregative"] if query_info else None,
+            "QUERY_TYPE": get_query_type(query_id)
         })
 
     extracted_data = filter_data(extracted_data, plot_config)
     print(f"After filtering: {len(extracted_data)}")
     return extracted_data
 
+def get_query_type(query_name: str):
+    """
+    Determines the query prefix type based on its name.
+    """
+    if query_name.startswith("join"):
+        return "join"
+    elif query_name.startswith("po"):
+        return "po"
+    elif query_name.startswith("p"):
+        return "p"
+    else:
+        return "other"
 
 def filter_data(data, config):
     """
@@ -127,7 +140,7 @@ def whisker_duration_per_component_query_config(data, plot_config, scale="linear
 
     print("Starting to create boxplots for duration per component and query configuration.")
 
-    grouping_cols = ['POLICY', 'GRANULARITY', 'QUERY']
+    grouping_cols = ['POLICY', 'GRANULARITY', 'QUERY_TYPE']
     df = pd.DataFrame(data)
     if limit is not None:
         df = df[df['RUN_ID'] >= limit]
@@ -238,7 +251,7 @@ def check_shapiro_wilk_test(data: list, warmup: int, query_type: str, output_fol
     df = df[df['RUN_ID'] > warmup]
     
     # Grouping for "with query"
-    group_cols_with_query = ['POLICY', 'GRANULARITY', 'QUERY', 'TOOL']
+    group_cols_with_query = ['POLICY', 'GRANULARITY', 'QUERY_TYPE', 'TOOL']
     available_cols_with_query = [col for col in group_cols_with_query if col in df.columns]
     
     grouped = df.groupby(available_cols_with_query)
@@ -384,7 +397,7 @@ def check_Mann_Whitney_U_test(data: list, warmup: int, query_type: str, output_f
         json.dump(results_without_query, f, indent=4)
 
     # With query
-    group_cols_with_query = ['POLICY', 'GRANULARITY', 'QUERY']
+    group_cols_with_query = ['POLICY', 'GRANULARITY', 'QUERY_TYPE']
     available_cols_with_query = [col for col in group_cols_with_query if col in df.columns]
     
     grouped = df.groupby(available_cols_with_query)
@@ -433,7 +446,7 @@ def create_shapiro_wilk_test_table(results: list, query_type: str, output_folder
 
     df = pd.DataFrame(results)
     
-    potential_index_cols = ['POLICY', 'GRANULARITY', 'QUERY']
+    potential_index_cols = ['POLICY', 'GRANULARITY', 'QUERY_TYPE']
     index_cols = [col for col in potential_index_cols if col in df.columns]
     
     if not index_cols:
