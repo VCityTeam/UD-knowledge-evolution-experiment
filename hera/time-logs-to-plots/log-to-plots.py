@@ -68,7 +68,9 @@ def extract_log_info(log_file_path: str, queries_info: str, min_count_version: i
                     "TRY": nb_try,
                     "TIME": time_unix,
                     "COMPONENT_NAME": get_component_name(component),
-                    "AGGREGATIVE": query_info["aggregative"] if query_info else None
+                    "AGGREGATIVE": query_info["aggregative"] if query_info else 'none',
+                    "INDEX": query_info["index"] if query_info and "index" in query_info else 'none',
+                    "JOIN": query_info["join"] if query_info and "join" in query_info else 'none'
                 })
 
     extracted_data = remove_all_with_less_than_repeat(extracted_data, min_repeat)
@@ -125,14 +127,14 @@ def remove_all_with_less_than_count_component(data, count=3):
     return df.to_dict(orient='records')
 
 
-def whisker_duration_per_component_query_config(data, scale="linear", limit=None):
+def whisker_duration_per_component_query_config(data, scale="linear", limit=None, query_type=None):
     import pandas as pd
     import matplotlib.pyplot as plt
     import os
 
-    print("Starting to create boxplots for duration per component and query configuration.")
+    print("Starting to create boxplots for duration per component and index configuration.")
 
-    grouping_cols = ['VERSION', 'STEP', 'QUERY']
+    grouping_cols = ['VERSION', 'STEP', 'INDEX']
     df = pd.DataFrame(data)
     if limit is not None:
         df = df[df['TRY'] >= limit]
@@ -143,8 +145,8 @@ def whisker_duration_per_component_query_config(data, scale="linear", limit=None
 
     for name, group in grouped_data:
         # Extract group keys
-        version, step, query = name
-        grouped_output_dir = f"{output_dir}/{scale}/v-{version}-s{step}"
+        version, step, index = name
+        grouped_output_dir = f"{output_dir}/{query_type}/{scale}/v-{version}-s{step}"
         os.makedirs(grouped_output_dir, exist_ok=True)
 
         fig, ax = plt.subplots(figsize=(12, 6))
@@ -157,7 +159,7 @@ def whisker_duration_per_component_query_config(data, scale="linear", limit=None
 
         # Create the boxplot
         bp = ax.boxplot(data_to_plot, patch_artist=True,
-                        tick_labels=components)  # Added labels
+                        tick_labels=components, showfliers=False)  # Added labels
 
         # Add colors to boxes for better distinction
         for patch, comp in zip(bp['boxes'], components):
@@ -176,7 +178,7 @@ def whisker_duration_per_component_query_config(data, scale="linear", limit=None
 
         # Improve layout and labels
         ax.set_title(
-            f'Duration Distribution\nVersion={version}, Step={step}, Query={query}')
+            f'Duration Distribution\nVersion={version}, Step={step}, Index={index}')
         ax.set_ylabel('Duration (ms)')
         ax.set_xlabel('Component')
 
@@ -189,15 +191,15 @@ def whisker_duration_per_component_query_config(data, scale="linear", limit=None
         ax.grid(True, linestyle='--', alpha=0.6)  # Add grid lines
 
         # --- Create a safe filename for the plot ---
-        safe_query = sanitize_filename(query)
+        safe_index = sanitize_filename(index)
         filepath = os.path.join(
-            grouped_output_dir, f"whisker_duration_{safe_query}.png")
+            grouped_output_dir, f"whisker_duration_{safe_index}.png")
 
         plt.savefig(filepath, dpi=300)
         plt.close(fig)
 
 
-def create_duration_median_plot(data, scale="linear", limit=None):
+def create_duration_median_plot(data, scale="linear", limit=None, query_type=None):
     import pandas as pd
     import matplotlib.pyplot as plt
     
@@ -208,11 +210,11 @@ def create_duration_median_plot(data, scale="linear", limit=None):
     df = pd.DataFrame(data)
     if limit is not None:
         df = df[df['TRY'] >= limit]
-    output_dir = f'plots/median_duration/{scale}'
+    output_dir = f'plots/median_duration/{query_type}/{scale}'
     os.makedirs(output_dir, exist_ok=True)
 
     # Define the columns that identify a unique configuration
-    config_cols = ['STEP', 'QUERY', 'COMPONENT_NAME']
+    config_cols = ['STEP', 'INDEX', 'COMPONENT_NAME']
 
     # --- Step 1: Calculate median duration for each version within each configuration ---
     median_duration_per_version = df.groupby(
@@ -230,16 +232,16 @@ def create_duration_median_plot(data, scale="linear", limit=None):
     if num_unique_configs == 0:
         print("No data or configurations found to plot.")
     else:
-        # associate step, query to list of components
+        # associate step, index to list of components
         config_to_components = {}
         for config in unique_configs:
-            step, query, component = config
-            if (step, query) not in config_to_components:
-                config_to_components[(step, query)] = []
-            config_to_components[(step, query)].append(component)
+            step, index, component = config
+            if (step, index) not in config_to_components:
+                config_to_components[(step, index)] = []
+            config_to_components[(step, index)].append(component)
 
         # --- Step 3: Generate plots ---
-        for (step, query), components in config_to_components.items():
+        for (step, index), components in config_to_components.items():
             fig, ax = plt.subplots(figsize=(12, 6))
 
             components = sorted(
@@ -253,9 +255,9 @@ def create_duration_median_plot(data, scale="linear", limit=None):
             # Filter data for the current configuration
             for component in components:
                 # Filter the DataFrame for the current configuration
-                config_cols = ['STEP', 'QUERY', 'COMPONENT_NAME']
+                config_cols = ['STEP', 'INDEX', 'COMPONENT_NAME']
                 # Create a tuple for the current configuration
-                config = [step, query, component]
+                config = [step, index, component]
                 config_filter = (median_duration_per_version[config_cols] == pd.Series(
                     config, index=config_cols)).all(axis=1)
                 plot_data = median_duration_per_version[config_filter].sort_values(by='VERSION')
@@ -275,7 +277,7 @@ def create_duration_median_plot(data, scale="linear", limit=None):
 
             # Set title and labels
             # Create a multi-line title for better readability
-            title_str = f"Step: {step}, Query: {query}"
+            title_str = f"Step: {step}, Index: {index}"
             ax.set_title(title_str, fontsize=9)
             ax.set_xlabel("Version")
             ax.set_ylabel("Median Duration (ms)")
@@ -293,7 +295,7 @@ def create_duration_median_plot(data, scale="linear", limit=None):
 
             # --- Create a safe filename for the plot ---
             os.makedirs(f"{output_dir}/{step}", exist_ok=True)
-            filepath = f"{output_dir}/{step}/duration_median_{query}.png"
+            filepath = f"{output_dir}/{step}/duration_median_{index}.png"
             plt.savefig(filepath, dpi=300)
             plt.close(fig)
 
@@ -302,14 +304,14 @@ def create_version_normalized_duration_plot(data, limit=None):
     """
     Generates plots showing normalized execution time per version for configurations.
 
-    Each plot corresponds to a (STEP, QUERY) combination and shows
+    Each plot corresponds to a (STEP, INDEX) combination and shows
     lines for different COMPONENT_NAMEs. The y-axis represents the duration
     of a specific version divided by the duration of the lowest version number
-    found within that specific (STEP, QUERY, COMPONENT_NAME) group.
+    found within that specific (STEP, INDEX, COMPONENT_NAME) group.
 
     Args:
         data (list or similar): Input data convertible to a pandas DataFrame.
-                                 Expected columns: 'STEP', 'QUERY',
+                                 Expected columns: 'STEP', 'INDEX',
                                  'COMPONENT_NAME', 'VERSION', 'DURATION (ms)', 'TRY'.
         limit (int, optional): If provided, only include rows where 'TRY' >= limit.
                                Defaults to None.
@@ -326,7 +328,7 @@ def create_version_normalized_duration_plot(data, limit=None):
         df = df[df['TRY'] >= limit]
 
     # Ensure essential columns exist
-    config_cols = ['STEP', 'QUERY', 'COMPONENT_NAME']
+    config_cols = ['STEP', 'INDEX', 'COMPONENT_NAME']
     required_cols = config_cols + ['VERSION', 'DURATION (ms)']
     if not all(col in df.columns for col in required_cols):
         missing = [col for col in required_cols if col not in df.columns]
@@ -369,25 +371,25 @@ def create_version_normalized_duration_plot(data, limit=None):
         axis=1
     )
 
-    # --- Step 5: Prepare for plotting (Group by Step, Query) ---
+    # --- Step 5: Prepare for plotting (Group by Step, Index) ---
     unique_configs_for_plotting = results_df[[
-        'STEP', 'QUERY']].drop_duplicates().values.tolist()
+        'STEP', 'INDEX']].drop_duplicates().values.tolist()
     num_plot_configs = len(unique_configs_for_plotting)
     print(
-        f"Found {num_plot_configs} unique (STEP, QUERY) combinations for plotting.")
+        f"Found {num_plot_configs} unique (STEP, INDEX) combinations for plotting.")
 
     if num_plot_configs == 0:
         print("No configurations found to plot.")
     else:
         # --- Step 6: Generate plots ---
         for plot_config in unique_configs_for_plotting:
-            step, query = plot_config
+            step, index = plot_config
             fig, ax = plt.subplots(figsize=(12, 6))
 
-            # Filter results_df for the current Step, Query
+            # Filter results_df for the current Step, Index
             plot_group_data = results_df[
                 (results_df['STEP'] == step) &
-                (results_df['QUERY'] == query)
+                (results_df['INDEX'] == index)
             ].copy()
 
             # Get components for this group and sort them for consistent plotting order
@@ -425,7 +427,7 @@ def create_version_normalized_duration_plot(data, limit=None):
                         marker='o', linestyle='-', label=component, color=color)
 
             # --- Plot Customization ---
-            title_str = f"Step: {step}: Query: {query}"
+            title_str = f"Step: {step}: Index: {index}"
             ax.set_title(title_str, fontsize=11)  # Adjusted font size slightly
             ax.set_xlabel("Version")
             ax.set_ylabel("Normalized Duration (ms)")
@@ -453,9 +455,9 @@ def create_version_normalized_duration_plot(data, limit=None):
             step_prod_dir = f"{output_dir}/{step}"
             # Create subdirectory if needed
             os.makedirs(step_prod_dir, exist_ok=True)
-            # Sanitize query part of filename (replace non-alphanumeric with underscore)
-            safe_query = "".join(c if c.isalnum() else "_" for c in str(query))
-            filepath = f"{step_prod_dir}/normalized_duration_{safe_query}.png"
+            # Sanitize index part of filename (replace non-alphanumeric with underscore)
+            safe_index = "".join(c if c.isalnum() else "_" for c in str(index))
+            filepath = f"{step_prod_dir}/normalized_duration_{safe_index}.png"
 
             plt.savefig(filepath, dpi=300)  # Use bbox_inches
             plt.close(fig)  # Close figure to free memory
@@ -482,6 +484,17 @@ def store_data_to_json(data, file_path):
     """
     with open(file_path, 'w') as f:
         json.dump(data, f)
+        
+def store_data_to_csv(data, file_path):
+    """
+    Store the data to a csv file
+    Args:
+        data (list): List of dictionaries
+        file_path (str): Path to the csv file
+    """
+    import pandas as pd
+    df = pd.DataFrame(data)
+    df.to_csv(file_path, index=False)
 
 def check_shapiro_wilk_test(data: list, warmup: int, query_type: str, output_folder: str):
     import pandas as pd
@@ -498,17 +511,17 @@ def check_shapiro_wilk_test(data: list, warmup: int, query_type: str, output_fol
     # Remove warmup tries
     df = df[df['TRY'] > warmup]
     
-    grouped = df.groupby(['STEP', 'QUERY', 'COMPONENT_NAME', 'VERSION'])
+    grouped = df.groupby(['STEP', 'QUERY', 'COMPONENT_NAME', 'VERSION', 'INDEX'])
 
-    # Compute mean duration by TRY, COMPONENT, STEP, COMPONENT_NAME, VERSION
-    mean_df = df.groupby(['TRY', 'COMPONENT', 'STEP', 'COMPONENT_NAME', 'VERSION'], as_index=False)['DURATION (ms)'].mean()    
+    # Compute mean duration by TRY, COMPONENT, STEP, COMPONENT_NAME, VERSION, INDEX
+    mean_df = df.groupby(['TRY', 'COMPONENT', 'STEP', 'COMPONENT_NAME', 'VERSION', 'INDEX'], as_index=False)['DURATION (ms)'].mean()    
     # Now group by STEP, COMPONENT_NAME, VERSION for the Shapiro-Wilk test
-    grouped_without_query = mean_df.groupby(['STEP', 'COMPONENT_NAME', 'VERSION'])
+    grouped_without_query = mean_df.groupby(['STEP', 'COMPONENT_NAME', 'VERSION', 'INDEX'])
     
     for name, group in grouped_without_query:
-        step, component, version = name
+        step, component, version, index = name
         if len(group) < 2:
-            print(f"Not enough data for statistical test for {step, component, version}")
+            print(f"Not enough data for statistical test for {step, component, version, index}")
             continue
         # Perform Shapiro-Wilk test for normality
         grouped_data = group['DURATION (ms)']
@@ -521,6 +534,7 @@ def check_shapiro_wilk_test(data: list, warmup: int, query_type: str, output_fol
             'STEP': int(step),
             'COMPONENT_NAME': component,
             'VERSION': int(version),
+            'INDEX': index,
             'W_STATISTIC': stat,
             'P_VALUE': p_value,
             'NORMALLY_DISTRIBUTED': str(p_value > alpha),
@@ -534,9 +548,9 @@ def check_shapiro_wilk_test(data: list, warmup: int, query_type: str, output_fol
         json.dump(results_without_query, f, indent=4)
 
     for name, group in grouped:
-        step, query, component, version = name
+        step, query, component, version, index = name
         if len(group) < 2:
-            print(f"Not enough data for statistical test for {step, query, component, version}")
+            print(f"Not enough data for statistical test for {step, query, component, version, index}")
             continue
         # Perform Shapiro-Wilk test for normality
         grouped_data = group['DURATION (ms)']
@@ -550,6 +564,7 @@ def check_shapiro_wilk_test(data: list, warmup: int, query_type: str, output_fol
             'QUERY': query,
             'VERSION': int(version),
             'COMPONENT_NAME': component,
+            'INDEX': index,
             'W_STATISTIC': stat,
             'P_VALUE': p_value,
             'NORMALLY_DISTRIBUTED': str(p_value > alpha),
@@ -659,11 +674,15 @@ def create_shapiro_wilk_test_table(results: list, query_type: str, output_folder
 
     df = pd.DataFrame(results)
     
+    # Keep only lines where step is higher than 0 or version is lower than 50
+    df = df[(df['STEP'] > 0)]
+    df = df[(df['VERSION'] < 50)]
+    
     # Create a pivot table as before
-    df = df.pivot_table(index=['STEP', 'VERSION','QUERY'] if with_query else ['STEP', 'VERSION'],
-                        columns='COMPONENT_NAME',
-                        values=['MEDIAN', '75TH_PERC', '95TH_PERC'],
-                        aggfunc='first')
+    df = df.pivot_table(index=['STEP', 'VERSION','QUERY', 'INDEX'] if with_query else ['STEP', 'VERSION', 'INDEX'],
+            aggfunc='mean',
+            values=['MEAN', 'MEDIAN'],
+            columns='COMPONENT_NAME')
 
     # Prepare multi-level columns: first row is component, second row is statistic
     df.columns = pd.MultiIndex.from_tuples([(comp, stat) for stat, comp in df.columns])
@@ -675,7 +694,7 @@ def create_shapiro_wilk_test_table(results: list, query_type: str, output_folder
     df.reset_index(inplace=True)
 
     # Save with multi-level columns
-    df.to_csv(filename, index=False, index_label=['STEP', 'VERSION', 'QUERY'] if with_query else ['STEP', 'VERSION'], header=True, float_format='%.2f')
+    df.to_csv(filename, index=False, index_label=['STEP', 'VERSION', 'QUERY', 'INDEX'] if with_query else ['STEP', 'VERSION', 'INDEX'], header=True, float_format='%.2f')
     
     print("Shapiro-Wilk test results saved to ", filename)
     
@@ -884,16 +903,31 @@ if __name__ == "__main__":
         os.makedirs(folder, exist_ok=True)
 
     store_data_to_json(data=log_data, file_path="log_data.json")
+    store_data_to_csv(data=log_data, file_path="log_data.csv")
+    
+    aggregative_query_types = ["aggregative", "non-aggregative"]
 
     if mode == "plots" or mode == "all":
-        for scale in ["linear", "log"]:
-            whisker_duration_per_component_query_config(data=log_data, scale=scale, limit=50)
-            create_duration_median_plot(data=log_data, scale=scale, limit=50)
+        for query_type in aggregative_query_types:
+            if query_type == "non-aggregative":
+                print(f"Processing query type: {query_type}")
+                filtered_log_data = [entry for entry in log_data if not (entry['AGGREGATIVE'])]
+                for scale in ["linear", "log"]:
+                    whisker_duration_per_component_query_config(data=filtered_log_data, scale=scale, limit=warmup, query_type=query_type)
+                    create_duration_median_plot(data=filtered_log_data, scale=scale, limit=warmup, query_type=query_type)
+            else:
+                print(f"Processing query type: {query_type}")
+                filtered_log_data = [entry for entry in log_data if (entry['AGGREGATIVE'])]
+                for scale in ["linear", "log"]:
+                    whisker_duration_per_component_query_config(data=filtered_log_data, scale=scale, limit=warmup, query_type=query_type)
+                    create_duration_median_plot(data=filtered_log_data, scale=scale, limit=warmup, query_type=query_type)
+            
+            
 
-        create_version_normalized_duration_plot(data=log_data, limit=50)
+        create_version_normalized_duration_plot(data=log_data, limit=warmup)
         
     if mode == "stats" or mode == "all":
-        for query_type in ["aggregative", "non-aggregative"]:
+        for query_type in aggregative_query_types:
             if query_type == "non-aggregative":
                 print(f"Processing query type: {query_type}")
                 filtered_log_data = [entry for entry in log_data if not (entry['AGGREGATIVE'])]
