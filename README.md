@@ -66,6 +66,13 @@ flowchart TD
     J --> |Sends query| G & I
 ```
 
+## Knowledge Graph Extraction
+
+A Python program is available to create a semantic knowledge graph from Argo Workflow execution data.
+It parses workflow execution JSON and translates it into an RDF Turtle (`.ttl`) file, capturing workflow metadata, architecture, execution details, and resource consumption using standard ontologies (PROV-O, Schema.org, P-PLAN).
+
+See the [Argo Knowledge Graph Extractor documentation](argo/README.md) for usage and details.
+
 ## Contributing
 If you would like to contribute to this project, please follow these guidelines:
 1. Fork the repository.
